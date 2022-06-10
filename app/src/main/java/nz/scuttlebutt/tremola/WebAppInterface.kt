@@ -124,6 +124,15 @@ class WebAppInterface(val act: Activity, val tremolaState: TremolaState, val web
                         Toast.LENGTH_LONG).show()
                 }
             }
+            "priv:board" -> {
+                val rawStr = tremolaState.msgTypes.mkBoard(
+                        Base64.decode(args[1], Base64.NO_WRAP).decodeToString(),
+                        args.slice(2..args.lastIndex))
+                val evnt = tremolaState.msgTypes.jsonToLogEntry(rawStr,
+                        rawStr.encodeToByteArray())
+                evnt?.let { rx_event(it) } // persist it, propagate horizontally and also up
+                return
+            }
             else -> {
                 Log.d("onFrontendRequest", "unknown")
             }

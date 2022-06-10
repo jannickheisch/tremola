@@ -90,6 +90,7 @@ function menu_reset() {
 }
 
 function menu_edit(target, title, text) {
+  console.log("Opened menu_edit")
   closeOverlay()
   document.getElementById('edit-overlay').style.display = 'initial';
   document.getElementById('overlay-bg').style.display = 'initial';
@@ -134,6 +135,58 @@ function edit_confirmed() {
     console.log("action for new_pub_target")
   } else if (edit_target == 'new_invite_target') {
     backend("invite:redeem " + val)
+  } else if (edit_target == 'new_board') {
+    var recps = []
+    for (var m in tremola.contacts) {
+      if (document.getElementById(m).checked)
+        recps.push(m);
+    }
+    if(val == '')
+      return
+
+    createBoard(val, recps);
+    setScenario("board_list")
+  } else if (edit_target == 'board_new_column') {
+    if(val == '') {
+      menu_edit('board_new_column', 'Enter name of new List: ', '')
+      launch_snackbar("Enter a name")
+      return
+    }
+    createColumn(curr_board, val)
+
+  } else if (edit_target == 'board_new_item') {
+    if(val == '') {
+      menu_edit('board_new_item', 'Enter name of new Card: ', '')
+      launch_snackbar("Enter a name")
+      return
+    }
+    createColumnItem(curr_board, curr_column, val)
+  } else if (edit_target == 'board_rename_column') {
+    if(val == '') {
+      menu_rename_column(curr_column)
+      launch_snackbar("Please enter a new Name")
+      return
+    }
+
+    if(val == tremola.board[curr_board].columns[curr_column].name)
+      return
+
+    renameColumn(curr_board, curr_column, val)
+  } else if (edit_target == 'board_rename_item') {
+
+    if( val != tremola.board[curr_board].items[curr_rename_item].name && val != '') {
+      renameItem(curr_board, curr_rename_item, val)
+    }
+    item_menu(curr_rename_item)
+  }
+}
+
+
+function members_confirmed() {
+  if (prev_scenario == 'chats') {
+    new_conversation()
+  } else if (prev_scenario == 'board_list') {
+    new_board()
   }
 }
 
@@ -528,6 +581,8 @@ function fid2display(fid) {
 
 function backend(cmdStr) { // send this to Kotlin (or simulate in case of browser-only testing)
   if (typeof Android != 'undefined') { Android.onFrontendRequest(cmdStr); return; }
+  if(tremola)
+    tremola.seq++
   cmdStr = cmdStr.split(' ')
   if (cmdStr[0] == 'ready')
      b2f_initialize('@AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=.ed25519')
@@ -538,11 +593,25 @@ function backend(cmdStr) { // send this to Kotlin (or simulate in case of browse
     cmdStr.splice(0,2)
     var e = { 'header': {'tst': Date.now(),
                          'ref': Math.floor(1000000*Math.random()),
-                         'fid': myId},
+                         'fid': myId,
+                         'seq' : tremola.seq},
               'confid': {'type': 'post', 'text': draft, 'recps': cmdStr},
               'public': {}
     }
     // console.log('e=', JSON.stringify(e))
+    b2f_new_event(e)
+  } else if(cmdStr[0] == 'priv:board') {
+    var operation = JSON.parse(atob(cmdStr[1]))
+    console.log(operation)
+    cmdStr.splice(0,2)
+    var e = { 'header': {'tst': Date.now(),
+                          'ref': Math.floor(1000000*Math.random()),
+                          'fid': myId,
+                          'seq': tremola.seq},
+                  'confid': {'type': 'board', 'operation': operation, 'recps': cmdStr},
+                  'public': {}
+    }
+    console.log('e=', JSON.stringify(e))
     b2f_new_event(e)
   } else {
     // console.log('backend', JSON.stringify(cmdStr))
@@ -555,8 +624,11 @@ function resetTremola() { // wipes browser-side content
       "contacts": {},
       "profile": {},
       "id": myId,
-      "settings": get_default_settings()
+      "settings": get_default_settings(),
+      "board": {}
     }
+    if (typeof Android == 'undefined') //simulates seq for browser only testing
+      tremola.seq = 0
     var n = recps2nm([myId])
     tremola.chats[n] = { "alias":"local notes (for my eyes only)", "posts":{}, "forgotten":false,
                          "members":[myId], "touched": Date.now(), "lastRead": 0 };
@@ -586,6 +658,7 @@ function b2f_new_event(e) { // incoming SSB log event: we get map with three ent
   // console.log('hdr', JSON.stringify(e.header))
   // console.log('pub', JSON.stringify(e.public))
   // console.log('cfd', JSON.stringify(e.confid))
+  console.log(e)
   if (e.confid && e.confid.type == 'post') {
     var i, conv_name = recps2nm(e.confid.recps);
     if (!(conv_name in tremola.chats)) { // create new conversation if needed
@@ -619,9 +692,79 @@ function b2f_new_event(e) { // incoming SSB log event: we get map with three ent
     // if (curr_scenario == "chats") // the updated conversation could bubble up
     load_chat_list();
     // console.log(JSON.stringify(tremola))
+  } else if (e.confid && e.confid.type == 'board') {
+    var i;
+    var bid;
+    for (i in e.confid.recps) {
+      var r = e.confid.recps[i];
+      if (!(r in tremola.contacts)) {
+        var a = id2b32(r);
+        tremola.contacts[r] = { "alias": a, "initial": a.substring(0,1).toUpperCase(),
+                                "color": colors[Math.floor(colors.length * Math.random())] }
+        load_contact_list()
+      }
+    }
+
+    if(e.confid.operation.cmd[0] == Operation.BOARD_CREATE)
+      bid = e.header.ref
+    else
+      bid = e.confid.operation.bid
+
+    if(!(bid in tremola.board)) {
+        tremola.board[bid] = { "operations": {},
+                               "sortedOperations": [],
+                               "members": e.confid.recps,
+                               "forgotten": false,
+                               "name" : "",
+                               "curr_prev": [],
+                               "columns": {},
+                               "items": {},
+                               "numOfActiveColumns": 0,
+                               "history" : [],
+                               "pendingOperations" : {},
+                               "key": bid.toString()}
+    }
+
+
+    var board = tremola.board[bid]
+
+    if (!(e.header.ref in board.operations)) { //new operation
+      if(e.confid.operation.cmd[0] == Operation.BOARD_CREATE) {
+        board.name = e.confid.operation.cmd[1]
+      }
+
+      var p = {"key": e.header.ref, "fid": e.header.fid, "fid_seq": e.header.seq, "body": e.confid.operation, "when": e.header.tst, "sorted": false };
+      board["operations"][e.header.ref] = p;
+
+
+
+
+      // Decides what kind of update is needed
+      /*if( curr_scenario == 'board') {
+        if(curr_board == bid) {
+          console.log(board.curr_prev)
+          if(comparePrevs(board.curr_prev, e.confid.operation.prev)) {
+            board.sortedOperations.push(e.header.ref)
+            apply_operation(e.header.ref, true)
+          } else {
+            board_reload()
+          }
+        }
+      }
+      */
+      newOperation(bid, e.header.ref) //ScuttleSort
+      //apply_all_operations(bid)
+      console.log(board.operations[e.header.ref].indx)
+      apply_operation_from_pos(bid, board.operations[e.header.ref].indx)
+      updateCurrPrev(bid, p)
+
+      if(e.confid.operation.cmd[0] == Operation.BOARD_CREATE)
+        load_board_list();
+
+    }
+
   }
   persist();
-  must_redraw = true;
 }
 
 function b2f_new_contact(contact_str) { // '{"alias": "nickname", "id": "fid", 'img' : base64, date}'
@@ -654,6 +797,7 @@ function b2f_initialize(id) {
     setSetting(nm, tremola.settings[nm])
   load_chat_list()
   load_contact_list()
+  load_board_list()
 
   closeOverlay();
   setScenario('chats');

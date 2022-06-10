@@ -7,8 +7,8 @@ var overlayIsActive = false;
 var display_or_not = [
   'div:qr', 'div:back',
   'core', 'lst:chats', 'lst:posts', 'lst:contacts', 'lst:members', 'the:connex',
-  'div:footer', 'div:textarea', 'div:confirm-members', 'plus',
-  'div:settings'
+  'lst:board_list', 'div:footer', 'div:textarea', 'div:confirm-members', 'plus',
+  'div:settings', 'div:board'
 ];
 
 var prev_scenario = 'chats';
@@ -20,7 +20,9 @@ var scenarioDisplay = {
   'posts':    ['div:back', 'core', 'lst:posts', 'div:textarea'],
   'connex':   ['div:qr', 'core', 'the:connex', 'div:footer', 'plus'],
   'members':  ['div:back', 'core', 'lst:members', 'div:confirm-members'],
-  'settings': ['div:back', 'div:settings']
+  'settings': ['div:back', 'div:settings'],
+  'board': ['div:back', 'core', 'div:board'],
+  'board_list': ['div:qr', 'core','lst:board_list', 'div:footer', 'plus']
 }
 
 var scenarioMenu = {
@@ -53,7 +55,15 @@ var scenarioMenu = {
   'members' :  [['Settings', 'menu_settings'],
                 ['About', 'menu_about']],
 
-  'settings' : []
+  'settings' : [],
+
+  'board'    : [['Add list', 'menu_new_column'],
+                ['History', 'menu_history'],
+                ['Debug', 'ui_debug']],
+
+  'board_list': [['Settings', 'menu_settings'],
+                     ['About', 'menu_about']]
+
 }
 
 function onBackPressed() {
@@ -61,9 +71,11 @@ function onBackPressed() {
     closeOverlay();
     return;
   }
-  if (['chats', 'contacts', 'connex'].indexOf(curr_scenario) >= 0) {
+  if (['chats', 'contacts', 'connex', 'board'].indexOf(curr_scenario) >= 0) {
     if (curr_scenario == 'chats')
       backend("onBackPressed");
+    else if (curr_scenario == 'board')
+      setScenario('board_list')
     else
       setScenario('chats')
   } else {
@@ -81,7 +93,7 @@ function setScenario(s) {
   var lst = scenarioDisplay[s];
   if (lst) {
     // if (s != 'posts' && curr_scenario != "members" && curr_scenario != 'posts') {
-    if (['chats', 'contacts', 'connex'].indexOf(curr_scenario) >= 0) {
+    if (['chats', 'contacts', 'connex', 'board_list'].indexOf(curr_scenario) >= 0) {
       var cl = document.getElementById('btn:'+curr_scenario).classList;
       cl.toggle('active', false);
       cl.toggle('passive', true);
@@ -97,8 +109,12 @@ function setScenario(s) {
         }
     })
     // console.log('s: ' + s)
-    if (s == "posts" || s == "settings") {
-      document.getElementById('tremolaTitle').style.display = 'none';
+    if(s != "board") {
+      document.getElementById('tremolaTitle').style.position = null;
+    }
+
+    if (s == "posts" || s == "settings" || s == "board") {
+
       document.getElementById('conversationTitle').style.display = null;
       // document.getElementById('plus').style.display = 'none';
     } else {
@@ -109,7 +125,7 @@ function setScenario(s) {
     }
     if (lst.indexOf('div:qr') >= 0) { prev_scenario = s; }
     curr_scenario = s;
-    if (['chats', 'contacts', 'connex'].indexOf(curr_scenario) >= 0) {
+    if (['chats', 'contacts', 'connex', 'board_list'].indexOf(curr_scenario) >= 0) {
       var cl = document.getElementById('btn:'+curr_scenario).classList;
       cl.toggle('active', true);
       cl.toggle('passive', false);
@@ -119,7 +135,7 @@ function setScenario(s) {
 
 function btnBridge(e) {
   var e = e.id, m = '';
-  if (['btn:chats','btn:posts','btn:contacts','btn:connex'].indexOf(e) >= 0)
+  if (['btn:chats','btn:posts','btn:contacts','btn:connex', 'btn:board_list'].indexOf(e) >= 0)
     { setScenario(e.substring(4)); }
   if (e == 'btn:menu') {
     if (scenarioMenu[curr_scenario].length == 0)
@@ -168,6 +184,16 @@ function closeOverlay(){
   document.getElementById('edit-overlay').style.display = 'none';
   document.getElementById('new_contact-overlay').style.display = 'none';
   document.getElementById('old_contact-overlay').style.display = 'none';
+
+
+  document.getElementById('div:menu_history').style.display = 'none';
+  document.getElementById('div:item_menu').style.display = 'none';
+  curr_item = null
+  close_board_context_menu()
+  document.getElementById('btn:item_menu_description_save').style.display = 'none'
+  document.getElementById('btn:item_menu_description_cancel').style.display = 'none'
+  document.getElementById('div:debug').style.display = 'none'
+
   overlayIsActive = false;
 }
 
@@ -203,6 +229,8 @@ function plus_button() {
     menu_new_contact();
   } else if (curr_scenario == 'connex') {
     menu_new_pub();
+  } else if (curr_scenario == 'board_list') {
+    menu_new_board();
   }
 }
 
