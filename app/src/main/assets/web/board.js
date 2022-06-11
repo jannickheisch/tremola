@@ -246,9 +246,8 @@ function newOperation(bid, operationID) {
       for(var i in curr_op.body.prev) {
         if(curr_op.body.prev[i] != operationID)
           continue
-        add_edge_to_the_past(bid, curr_op.body.prev[i], operationID)
-        op.succ.push(curr_op.body.prev[i])
-        //curr_op.prev[i] = operationID
+        add_edge_to_the_past(bid, e, operationID)
+        op.succ.push(e)
       }
     }
     delete board.pendingOperations[operationID]
@@ -277,7 +276,7 @@ function add_edge_to_the_past(bid, operationID, causeID) {
   let a = Array.from(visited)
   a.sort((a,b) => {return b.indx - a.indx})
   for(let v of a) {
-    rise(bid, operationID)
+    rise(bid, v.key)
     v.vstd = false
   }
 }
@@ -298,7 +297,6 @@ function rise(bid, operationID) {
   while( pos < len1 && op.rank == board.operations[board.sortedOperations[pos+1]].rank
                                && board.sortedOperations[pos+1] < operationID) {
        pos += 1
-       console.log("NEBENLÄUFIGKEIT POS +1")
   }
 
   if(si < pos)
@@ -363,8 +361,10 @@ function board_reload(bid) {
 
   for(var op in board.operations) {
     delete board.operations[op].indx
-    board.operations[op].succ = []
-    board.operations[op].rank = 0
+    delete board.operations[op].succ
+    delete board.operations[op].rank
+    delete board.operations[op].vstd
+    delete board.operations[op].cycl
     board.operations[op].sorted = false
   }
 
@@ -589,6 +589,13 @@ function apply_operation(bid, operationID, apply_on_ui = false) {
       item.removed = true
       column.numOfActiveItems--
       column.item_ids.splice(column.item_ids.indexOf(curr_op.body.cmd[1]),1)
+
+      for (var i in column.item_ids) {
+        var curr_item = board.items[column.item_ids[i]]
+        if(curr_item.position > board.items[curr_op.body.cmd[1]].position) {
+          curr_item.position--
+        }
+      }
       if(apply_on_ui)
         ui_remove_item(curr_op.body.cmd[1])
       break

@@ -59,6 +59,7 @@ var scenarioMenu = {
 
   'board'    : [['Add list', 'menu_new_column'],
                 ['History', 'menu_history'],
+                ['Reload', 'reload_curr_board'],
                 ['Debug', 'ui_debug']],
 
   'board_list': [['Settings', 'menu_settings'],
