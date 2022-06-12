@@ -478,7 +478,7 @@ function apply_all_operations(bid) {
     ui_update_Board(bid, old_state)
   }
 }
-
+/*
 function apply_operation_from_pos(bid, pos) {
   var board = tremola.board[bid]
   var old_state = JSON.parse(JSON.stringify(board));
@@ -493,6 +493,7 @@ function apply_operation_from_pos(bid, pos) {
       ui_update_Board(bid, old_state)
    }
 }
+*/
 
 function apply_operation(bid, operationID, apply_on_ui = false) {
   var board = tremola.board[bid]
@@ -526,6 +527,32 @@ function apply_operation(bid, operationID, apply_on_ui = false) {
       if(apply_on_ui)
         load_column(curr_op.key)
       break
+    case Operation.COLUMN_REMOVE:
+      historyMessage += "removed list \""+ board.columns[curr_op.body.cmd[1]].name + "\""
+      board.columns[curr_op.body.cmd[1]].removed = true
+
+      for (var i in board.columns) {
+          if(board.columns[i].removed)
+              continue
+
+          if(board.columns[i].position > board.columns[curr_op.body.cmd[1]].position) {
+            --board.columns[i].position
+          }
+
+        }
+      board.numOfActiveColumns--
+
+      if(apply_on_ui)
+        ui_remove_column(curr_op.body.cmd[1])
+      break
+    case Operation.COLUMN_RENAME:
+      historyMessage += "renamed list \"" + board.columns[curr_op.body.cmd[1]].name + "\" to \"" + curr_op.body.cmd[2] + "\""
+      if (!(curr_op.body.cmd[1] in board.columns))
+        break
+      board.columns[curr_op.body.cmd[1]].name = curr_op.body.cmd[2]
+      if(apply_on_ui)
+        ui_rename_column(curr_op.body.cmd[1], curr_op.body.cmd[2])
+      break
     case Operation.ITEM_CREATE:
       historyMessage += "created a card in list \""+ board.columns[curr_op.body.cmd[1]].name + "\" with the name: \"" + curr_op.body.cmd[2] + "\""
       var newPos = 0
@@ -554,32 +581,6 @@ function apply_operation(bid, operationID, apply_on_ui = false) {
       if(apply_on_ui)
         load_item(curr_op.key)
       break
-    case Operation.COLUMN_REMOVE:
-      historyMessage += "removed list \""+ board.columns[curr_op.body.cmd[1]].name + "\""
-      board.columns[curr_op.body.cmd[1]].removed = true
-
-      for (var i in board.columns) {
-          if(board.columns[i].removed)
-              continue
-
-          if(board.columns[i].position > board.columns[curr_op.body.cmd[1]].position) {
-            --board.columns[i].position
-          }
-
-        }
-      board.numOfActiveColumns--
-
-      if(apply_on_ui)
-        ui_remove_column(curr_op.body.cmd[1])
-      break
-    case Operation.COLUMN_RENAME:
-      historyMessage += "renamed list \"" + board.columns[curr_op.body.cmd[1]].name + "\" to \"" + curr_op.body.cmd[2] + "\""
-      if (!(curr_op.body.cmd[1] in board.columns))
-        break
-      board.columns[curr_op.body.cmd[1]].name = curr_op.body.cmd[2]
-      if(apply_on_ui)
-        ui_rename_column(curr_op.body.cmd[1], curr_op.body.cmd[2])
-      break
     case Operation.ITEM_REMOVE:
       var item = board.items[curr_op.body.cmd[1]]
       var column = board.columns[item.curr_column]
@@ -603,10 +604,8 @@ function apply_operation(bid, operationID, apply_on_ui = false) {
       var item = board.items[curr_op.body.cmd[1]]
       historyMessage += "renamed card \"" + item.name + "\" of list \""+ board.columns[item.curr_column].name +"\" to \"" + curr_op.body.cmd[2] + "\""
       item.name = curr_op.body.cmd[2]
-      if(apply_on_ui) {
-        load_item(curr_op.body.cmd[1])
-        item_menu_refresh(curr_op.body.cmd[1])
-      }
+      if(apply_on_ui)
+        ui_update_item_name(curr_op.body.cmd[1], curr_op.body.cmd[2])
       break
     case Operation.ITEM_MOVE:
       var item = board.items[curr_op.body.cmd[1]]
@@ -627,49 +626,44 @@ function apply_operation(bid, operationID, apply_on_ui = false) {
         }
       }
       if(apply_on_ui)
-        load_item(curr_op.body.cmd[1])
-        item_menu_refresh(curr_op.body.cmd[1])
+        ui_update_item_move_to_column(curr_op.body.cmd[1], curr_op.body.cmd[2], item.position)
       break
     case Operation.ITEM_SET_DESCRIPTION:
       var item = board.items[curr_op.body.cmd[1]]
       historyMessage += "changed description of card \"" + item.name + "\" of list \"" + board.columns[item.curr_column].name +"\" from \"" + item.description + "\" to \"" + curr_op.body.cmd[2] + "\""
       item.description = curr_op.body.cmd[2]
-      if(apply_on_ui) {
-        load_item(curr_op.body.cmd[1])
-        item_menu_refresh(curr_op.body.cmd[1])
-      }
+      if(apply_on_ui)
+        ui_update_item_description(curr_op.body.cmd[1], curr_op.body.cmd[2])
       break
     case Operation.ITEM_POST_COMMENT:
       var item = board.items[curr_op.body.cmd[1]]
       historyMessage += "posted \"" + curr_op.body.cmd[2] + "\" on card \"" + item.name + "\" of list \"" + board.columns[item.curr_column].name + "\""
       item.comments.push([curr_op.fid, curr_op.body.cmd[2]])
-      if(apply_on_ui) {
-        load_item(curr_op.body.cmd[1])
-        item_menu_refresh(curr_op.body.cmd[1])
-      }
+      if(apply_on_ui)
+        ui_item_update_chat(curr_op.body.cmd[1])
       break
     case Operation.ITEM_ASSIGN:
       var item = board.items[curr_op.body.cmd[1]]
       historyMessage += "assigned \"" + tremola.contacts[curr_op.body.cmd[2]].alias + "\" to card \"" + item.name + "\" of list \"" + board.columns[item.curr_column].name + "\""
-      item.assignees.push(curr_op.body.cmd[2])
+      if(item.assignees.indexOf(curr_op.body.cmd[2]) < 0)
+        item.assignees.push(curr_op.body.cmd[2])
       if(apply_on_ui)
-        item_menu_refresh(curr_op.body.cmd[1])
+        ui_update_item_assignees(curr_op.body.cmd[1])
       break
     case Operation.ITEM_UNASSIGN:
       var item = board.items[curr_op.body.cmd[1]]
       historyMessage += "unassigned \"" + tremola.contacts[curr_op.body.cmd[2]].alias + "\" from card \"" + item.name + "\" of list \"" + board.columns[item.curr_column].name + "\""
-      item.assignees.splice(item.assignees.indexOf(curr_op.body.cmd[2]), 1)
+      if(item.assignees.indexOf(curr_op.body.cmd[2]) >= 0)
+        item.assignees.splice(item.assignees.indexOf(curr_op.body.cmd[2]), 1)
       if(apply_on_ui)
-        item_menu_refresh(curr_op.body.cmd[1])
+        ui_update_item_assignees(curr_op.body.cmd[1])
       break
     case Operation.ITEM_COLOR:
       var item = board.items[curr_op.body.cmd[1]]
       historyMessage += "changed color of card \"" + item.name + "\" to " + curr_op.body.cmd[2]
       item.color = curr_op.body.cmd[2]
-      if(apply_on_ui) {
-        load_item(curr_op.body.cmd[1])
-        item_menu_refresh(curr_op.body.cmd[1])
-      }
+      if(apply_on_ui)
+        ui_update_item_color(curr_op.body.cmd[1], curr_op.body.cmd[2])
       break
   }
   //historyMessage += ",  " + curr_op.key // debug

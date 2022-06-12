@@ -736,26 +736,17 @@ function b2f_new_event(e) { // incoming SSB log event: we get map with three ent
       var p = {"key": e.header.ref, "fid": e.header.fid, "fid_seq": e.header.seq, "body": e.confid.operation, "when": e.header.tst, "sorted": false };
       board["operations"][e.header.ref] = p;
 
-
-
-
-      // Decides what kind of update is needed
-      /*if( curr_scenario == 'board') {
-        if(curr_board == bid) {
-          console.log(board.curr_prev)
-          if(comparePrevs(board.curr_prev, e.confid.operation.prev)) {
-            board.sortedOperations.push(e.header.ref)
-            apply_operation(e.header.ref, true)
-          } else {
-            board_reload()
-          }
-        }
-      }
-      */
       newOperation(bid, e.header.ref) //ScuttleSort
-      //apply_all_operations(bid)
       console.log(board.operations[e.header.ref].indx)
-      apply_operation_from_pos(bid, board.operations[e.header.ref].indx)
+
+      var opList = [Operation.COLUMN_CREATE, Operation.ITEM_CREATE, Operation.COLUMN_REMOVE, Operation.ITEM_REMOVE]
+
+      if(board.operations[e.header.ref].indx == board.sortedOperations.length -1 || opList.indexOf(board.operations[e.header.ref].body.cmd[0]) >= 0 ) {
+        apply_operation(bid, e.header.ref, true)
+      } else {
+        apply_all_operations(bid)
+      }
+
       updateCurrPrev(bid, p)
 
       if(e.confid.operation.cmd[0] == Operation.BOARD_CREATE)

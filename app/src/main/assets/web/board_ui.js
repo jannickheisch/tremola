@@ -61,20 +61,57 @@ function load_board(bid) { //switches scene to board and changes title to board 
 function ui_update_Board(bid, old_state) {
   var board = tremola.board[bid]
   for(var i in board.columns) {
-    if(!(i in old_state.columns) || !ui_isEqual(old_state.columns[i], board.columns[i]))
+    var old_column = old_state.columns[i]
+    var new_column = board.columns[i]
+
+    if(!old_column) {
       load_column(i)
+      return
+    }
+    if(new_column.removed && (old_column.removed != new_column.removed)) {
+      ui_remove_column(i)
+      return
+    }
+    if(old_column.name != new_column.name)
+      ui_rename_column(i, new_column.name)
   }
 
   for(var i in board.items) {
-    if(!(i in old_state.items) || !ui_isEqual(old_state.items[i], board.items[i]))
+    var old_item = old_state.items[i]
+    var new_item = board.items[i]
+
+    if(!old_item) {
       load_item(i)
-      item_menu_refresh(i)
+      return
+    }
+    if(new_item.removed && (old_item.removed != new_column.removed)) {
+      ui_remove_item(i)
+      return
+    }
+    if(old_item.name != new_item.name)
+      ui_update_item_name(i, new_item.name)
+    if(old_item.description != new_item.description)
+      ui_update_item_description(i, new_item.description)
+    if(!equalArrays(old_item.assignees, new_item.assignees))
+      ui_update_item_assignees(i)
+    if(!equalArrays(old_item.comments, new_item.comments))
+      ui_item_update_chat(i)
+    if(old_item.curr_column != new_item.curr_column)
+      ui_update_item_move_to_column(i, new_item.curr_column, new_item.position)
+    if(old_item.color != new_item.color)
+      ui_update_item_color(i, new_item.color)
   }
 }
 
-function ui_isEqual(obj1, obj2) {
-  for(var i in obj1) {
-    if(obj1[i] != obj2[i]) {
+function equalArrays(array1, array2) {
+  if(array1.length != array2.length)
+    return false
+
+  for(var i in array1) {
+    if(array1[i] instanceof Array && array2[i] instanceof Array) {
+      if(!equalArrays(array1[i], array2[i]))
+        return false
+    } else if(array1[i] != array2[i]) {
       return false
     }
   }
@@ -177,7 +214,7 @@ function load_column(columnID) {
   columnsHTML += "</div></div></div>"
   columnsHTML += "<div style='overflow:auto;max-height:60vh;'><div class='column_content' id='" + columnID + "-columnContent'></div></div>"
   //columnsHTML += "<div style='order: 100000;width: 95%; margin: auto;'><button class='board_item_button w100' onclick='menu_create_column_item(\"" + columnID +"\")' style='overflow: hidden; position: relative;'>New Card</button></div>"
-  columnsHTML += "<div class='column_footer' onclick='menu_create_column_item(\"" + columnID +"\")'>+ Add new card</div>"
+  columnsHTML += "<div class='column_footer' onclick='menu_create_item(\"" + columnID +"\")'>+ Add new card</div>"
   columnsHTML +="</div></div>"
 
   document.getElementById("div:columns_container").innerHTML += columnsHTML
@@ -197,7 +234,7 @@ function context_menu_column_options(columnID) {
   var context_menu = document.getElementById('context_options-' + columnID)
   context_menu.style.display = 'block'
   curr_context_menu = 'context_options-' + columnID
-  context_menu.innerHTML = "<button class='context_options_btn' onclick='menu_create_column_item(\"" + columnID + "\")'>Add new card</button>"
+  context_menu.innerHTML = "<button class='context_options_btn' onclick='menu_create_item(\"" + columnID + "\")'>Add new card</button>"
   context_menu.innerHTML += "<button class='context_options_btn' onclick='contextmenu_move_column(\"" + columnID + "\")'>Move List...</button>"
   context_menu.innerHTML += "<button class='context_options_btn' onclick='menu_rename_column(\"" + columnID + "\")'>Rename...</button>"
   context_menu.innerHTML += "<button class='context_options_btn' onclick='btn_remove_column(\""+ columnID + "\")' style='color:red;'>Delete</button>"
@@ -292,7 +329,7 @@ function ui_move_column(columnID, insertPos) {
   Items
 */
 
-function menu_create_column_item(columnID) {
+function menu_create_item(columnID) {
   curr_column = columnID
   menu_edit('board_new_item', 'Enter name of new Card', '')
 }
@@ -315,9 +352,9 @@ function load_item(itemID) {
 
   var itemHTML = "<div class='column_item' style='order:" + pos + ";overflow: auto;' id='"+ itemID +"-item' onclick='item_menu(\"" + itemID + "\")'>" //board_item_button
   //itemHTML += "<button class='item_button' onclick='item_menu(\"" + itemID + "\")'>"
-  itemHTML += "<div style='padding-top: 10px; padding-left: 10px; padding-bottom: 10px'> <b><font color='" + color +"'>" + name + "</font></b></div>"
-  itemHTML += "<div style='font: 12px Helvetica Neue, sans-serif; color: #808080;overflow-wrap: break-word;max-height: 4.8em;overflow: hidden;padding-left: 10px;padding-right: 10px;'>" + board.items[itemID].description + "</div>"
-  itemHTML += "<div style='padding-left: 10px;padding-right: 10px;display:flex;justify-content: flex-start;flex-direction: row;padding-bottom:10px;padding-top:5px;'>"
+  itemHTML += "<div style='padding-top: 10px; padding-left: 10px; padding-bottom: 10px'> <b><font id='"+ itemID +"-itemHdr' color='" + color +"'>" + name + "</font></b></div>"
+  itemHTML += "<div id='"+ itemID +"-itemDescr' style='font: 12px Helvetica Neue, sans-serif; color: #808080;overflow-wrap: break-word;max-height: 4.8em;overflow: hidden;padding-left: 10px;padding-right: 10px;'>" + board.items[itemID].description + "</div>"
+  itemHTML += "<div id='"+ itemID +"-itemAssignees' style='padding-left: 10px;padding-right: 10px;display:flex;justify-content: flex-start;flex-direction: row;padding-bottom:10px;padding-top:5px;'>"
 
   for(var i in board.items[itemID].assignees) {
     var assigneeID = board.items[itemID].assignees[i]
@@ -354,8 +391,7 @@ function item_menu(itemID) {
   document.getElementById('btn:item_menu_description_save').style.display = 'none'
   document.getElementById('btn:item_menu_description_cancel').style.display = 'none'
   document.getElementById('item_menu_comment_text').value = ''
-  document.getElementById('item_menu_title').innerHTML = "<font color='" + item.color + "'>" + item.name + "</font"
-  console.log(item)
+  document.getElementById('item_menu_title').innerHTML = "<font id='"+ itemID +"-itemMenuHdr' color='" + item.color + "'>" + item.name + "</font"
 
   //load description
   var descDiv = document.getElementById('div:item_menu_description')
@@ -395,21 +431,6 @@ function item_menu(itemID) {
     assigneesHTML += "<button class=contact_picture style='float:left;margin-right: 0.75em; background: " + author_color + ";'>" + author_initial + "</button>"
   }
   document.getElementById("div:item_menu_assignees").innerHTML = assigneesHTML
-}
-
-function item_menu_refresh(itemID) { //updates item_menu
-  var prev_context_menu = curr_context_menu
-  console.log("REFESH: " + curr_context_menu)
-  if(curr_item == itemID) {
-    item_menu(itemID)
-    if(prev_context_menu) {
-      switch(prev_context_menu.split('-')[2]) {
-        case 'assign':
-          contextmenu_item_assign()
-          break
-      }
-    }
-  }
 }
 
 function item_menu_save_description() {
@@ -600,6 +621,7 @@ function ui_remove_item(itemID) {
 }
 
 function ui_item_assign(fid) {
+  //close_board_context_menu()
   var board = tremola.board[curr_board]
   var alreadyAssigned = board.items[curr_item].assignees.includes(fid)
 
@@ -645,4 +667,145 @@ function contextmenu_change_color() {
 function btn_change_item_color(iid, color) {
   close_board_context_menu()
   setItemColor(curr_board, iid, color)
+}
+
+function ui_update_item_name(itemID, new_name) {
+  var hdr = document.getElementById(itemID +'-itemHdr')
+
+  if(hdr) {
+    hdr.innerHTML = new_name
+  } else {
+    load_item(itemID)
+  }
+
+  if(curr_item == itemID) {
+    var itemMenuHdr = document.getElementById(itemID + '-itemMenuHdr')
+    if(itemMenuHdr) {
+      itemMenuHdr.innerHTML = new_name
+    } else {
+      item_menu(itemID)
+    }
+  }
+}
+
+function ui_update_item_color(itemID, new_color) {
+  var hdr = document.getElementById(itemID +'-itemHdr')
+
+  if(hdr) {
+    hdr.style.color = new_color
+  } else {
+    load_item(itemID)
+  }
+
+  if(curr_item == itemID) {
+    var itemMenuHdr = document.getElementById(itemID + '-itemMenuHdr')
+    if(itemMenuHdr) {
+      itemMenuHdr.style.color = new_color
+    } else {
+      item_menu(itemID)
+    }
+    if(curr_context_menu && curr_context_menu.split('-')[2] == 'color')
+      contextmenu_change_color()
+  }
+}
+
+function ui_update_item_description(itemID, new_descr) {
+  var itemDescr = document.getElementById(itemID +'-itemDescr')
+
+
+  if(itemDescr) {
+    itemDescr.innerHTML = new_descr
+  } else {
+    load_item(itemID)
+  }
+
+  if(curr_item == itemID) {
+    var itemMenuDescr = document.getElementById('div:item_menu_description_text')
+    if(itemMenuDescr) {
+      itemMenuDescr.value = new_descr
+    } else {
+      item_menu(itemID)
+    }
+  }
+}
+
+function ui_update_item_assignees(itemID) {
+  var board = tremola.board[curr_board]
+  var item = board.items[itemID]
+
+  var assigneesWrapper = document.getElementById(itemID +'-itemAssignees')
+  if(assigneesWrapper) {
+    var assigneesHTML = ''
+    for(var i in board.items[itemID].assignees) {
+      var assigneeID = board.items[itemID].assignees[i]
+      var assigneeInitial = tremola.contacts[assigneeID].initial
+      var assigneeColor = tremola.contacts[assigneeID].color
+
+      assigneesHTML += "<button class=contact_picture style='height: 1.5em; width: 1.5em; box-shadow: none; background: " + assigneeColor + ";'>" + assigneeInitial + "</button>"
+    }
+    assigneesWrapper.innerHTML = assigneesHTML
+  } else {
+    load_item(itemID)
+  }
+
+  if(curr_item == itemID) {
+    var assigneesMenuWrapper = document.getElementById('div:item_menu_assignees')
+    if(assigneesMenuWrapper) {
+      var assigneesMenuHTML = ""
+      for(var i in item.assignees) {
+        var author_color = tremola.contacts[item.assignees[i]].color
+        var author_initial = tremola.contacts[item.assignees[i]].initial
+        assigneesMenuHTML += "<button class=contact_picture style='float:left;margin-right: 0.75em; background: " + author_color + ";'>" + author_initial + "</button>"
+      }
+      assigneesMenuWrapper.innerHTML = assigneesMenuHTML
+    } else {
+      item_menu(itemID)
+    }
+    if(curr_context_menu && curr_context_menu.split('-')[2] == 'assign') {
+      contextmenu_item_assign()
+    }
+  }
+}
+
+function ui_item_update_chat(itemID) {
+  var board = tremola.board[curr_board]
+  var item = board.items[itemID]
+
+  if(curr_item == itemID) {
+    var chatWrapper = document.getElementById('lst:item_menu_posts')
+    if(chatWrapper) {
+      var commentsHTML = ''
+      var commentsList = [...item.comments].reverse()
+      for(var i in commentsList) {
+        var author_name = tremola.contacts[commentsList[i][0]].alias
+        var author_color = tremola.contacts[commentsList[i][0]].color
+        var author_initial = tremola.contacts[commentsList[i][0]].initial
+
+        commentsHTML += "<div class='w100' style='padding: 5px 5px 5px;overflow:auto;'>"
+        commentsHTML += "<button class=contact_picture style='float:left;margin-right: 0.75em; background: " + author_color + ";'>" + author_initial + "</button>"
+        commentsHTML += "<div class='chat_item_button light' style='display: table;float:right;overflow: hidden; width: calc(100% - 4.4em);word-break: break-word;margin-right:10px'>"
+        commentsHTML += "<div style='display: table-cell;padding-left:10px;vertical-align: middle;overflow-wrap: break-word;'>" + commentsList[i][1] + "</div>"
+        commentsHTML += "</div></div>"
+      }
+    chatWrapper.innerHTML = commentsHTML
+    } else {
+      item_menu(itemID)
+    }
+  }
+}
+
+function ui_update_item_move_to_column(itemID, columnID, newPos) {
+  var itemHTML = document.getElementById(itemID + "-item").outerHTML
+  document.getElementById(itemID + "-item").outerHTML = ''
+  document.getElementById(columnID + "-columnContent").innerHTML += itemHTML
+  document.getElementById(itemID +'-item').style.order = newPos
+
+  if(curr_item == itemID) {
+    if(curr_context_menu) {
+      if(curr_context_menu.split('-')[2] == 'changePosition')
+        contextmenu_item_change_position()
+      else if(curr_context_menu.split('-')[2] == 'changeColumn')
+        contextmenu_change_column()
+    }
+  }
 }
