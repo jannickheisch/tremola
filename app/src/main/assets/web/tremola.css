@@ -22,6 +22,9 @@
   button {
     border-radius: 5px;
   }
+  .targetDiv * {
+      pointer-events: none;
+  }
   .active {
     background-color: var(--active);
   }
@@ -329,11 +332,13 @@ input:checked + .slider:before {
   font-size: medium;
   border-radius: 4pt;
   box-shadow: 0 0 5px rgba(0,0,0,0.7);
+  background-color: #c1e1c1;
 }
 
 .columns_container {
   position: relative;
   width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: row;
   justify-content: flex-start;
@@ -350,6 +355,7 @@ input:checked + .slider:before {
 .column_wrapper{
   flex: 0 0 36vw;
   width: 36vw;
+  background-color: #ebf4fa;
 }
 
 .column_content{
@@ -364,9 +370,14 @@ input:checked + .slider:before {
 .column_hdr {
   width: 100%;
   margin: 0 auto;
-  margin-top:5px;
-  margin-bottom:5px;
+  margin-top: 7px;
+  padding-top:5px;
+  padding-bottom:5px;
   overflow-wrap: break-word;
+  background-color: #c1e1c1;
+  border-bottom-color: gray;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
 }
 
 /*

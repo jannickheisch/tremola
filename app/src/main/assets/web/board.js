@@ -273,8 +273,11 @@ function add_edge_to_the_past(bid, operationID, causeID) {
   else
     rise(bid, operationID)
 
-  let a = Array.from(visited)
-  a.sort((a,b) => {return b.indx - a.indx})
+  console.log(visited);
+  // let a = visited.slice() // Array.from(visited)
+  var a = [];
+  visited.forEach( function(v) { a.push(v); } );
+  a.sort( function(a,b) {return b.indx - a.indx;} )
   for(let v of a) {
     rise(bid, v.key)
     v.vstd = false
@@ -331,7 +334,9 @@ function visit(bid, operationID, rnk, visited) {
           throw new Error('cycle');
       if (c.rank <= (rnk + out.length - 1)) {
           c.rank = rnk + out.length;
-          out.push(Array.from(c.succ));
+          console.log("c.succ");
+          console.log(c.succ);
+          out.push(c.succ.slice()); // Array.from(c.succ));
       }
   }
 
@@ -380,8 +385,6 @@ function board_reload(bid) {
     curr_context_menu = null
     load_board(bid)
   }
-
-
 }
 
 
@@ -470,7 +473,7 @@ function apply_all_operations(bid) {
   console.log(old_state)
   //execute operations and save results to local storage
   for(var i in board.sortedOperations) {
-    apply_operation(bid, board.sortedOperations[i])
+    apply_operation(bid, board.sortedOperations[i], false)
   }
   console.log(board)
 
@@ -486,7 +489,7 @@ function apply_operation_from_pos(bid, pos) {
   board.history.splice(pos, board.history.length - pos)
 
   for (var i = pos; i < board.sortedOperations.length; i++) {
-    apply_operation(bid, board.sortedOperations[i])
+    apply_operation(bid, board.sortedOperations[i], false)
   }
 
   if(curr_board == bid) { // update ui
@@ -495,7 +498,7 @@ function apply_operation_from_pos(bid, pos) {
 }
 */
 
-function apply_operation(bid, operationID, apply_on_ui = false) {
+function apply_operation(bid, operationID, apply_on_ui) {
   var board = tremola.board[bid]
   var curr_op = board['operations'][operationID]
 
@@ -684,7 +687,8 @@ function ui_debug() {
   closeOverlay()
   document.getElementById('div:debug').style.display = 'initial'
   document.getElementById('txt:debug').value = debug_toDot()//JSON.stringify(tremola.board[curr_board])
-  document.getElementById("overlay-trans").style.display = 'initial';
+  // document.getElementById("overlay-trans").style.display = 'initial';
+  document.getElementById("overlay-bg").style.display = 'initial';
 }
 
 function debug_toDot() {

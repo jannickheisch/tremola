@@ -90,10 +90,11 @@ function menu_reset() {
 }
 
 function menu_edit(target, title, text) {
-  console.log("Opened menu_edit")
+  console.log("Opened menu_edit:", target)
   closeOverlay()
   document.getElementById('edit-overlay').style.display = 'initial';
   document.getElementById('overlay-bg').style.display = 'initial';
+  // document.getElementById('board-overlay-bg').style.display = 'initial';
   document.getElementById('edit_title').innerHTML = title;
   document.getElementById('edit_text').value = text;
   document.getElementById('edit_text').focus();
@@ -110,6 +111,7 @@ function menu_edit_convname() {
 // }
 
 function edit_confirmed() {
+  // console.log('edit confirmed')
   closeOverlay()
   var val = document.getElementById('edit_text').value;
   if (edit_target == 'convNameTarget') {
@@ -129,23 +131,27 @@ function edit_confirmed() {
     tremola.chats[nm] = { "alias": "Chat w/ "+val, "posts":{}, "members":recps,
                           "touched": Date.now(), "lastRead": 0 };
     persist();
-    backend("add:contact " + new_contact_id + " " + btoa(val))
+    backend("add:contact " + new_contact_id + " " + btoa(val));
+    // console.log('added contact');
     menu_redraw();
   } else if (edit_target == 'new_pub_target') {
     console.log("action for new_pub_target")
   } else if (edit_target == 'new_invite_target') {
     backend("invite:redeem " + val)
   } else if (edit_target == 'new_board') {
+    console.log('new board');
     var recps = []
     for (var m in tremola.contacts) {
       if (document.getElementById(m).checked)
         recps.push(m);
     }
-    if(val == '')
+    if(val == '') {
+      console.log('empty')
       return
+    }
 
     createBoard(val, recps);
-    setScenario("board_list")
+    setScenario("kanban"); // board_list
   } else if (edit_target == 'board_new_column') {
     if(val == '') {
       menu_edit('board_new_column', 'Enter name of new List: ', '')
@@ -185,7 +191,7 @@ function edit_confirmed() {
 function members_confirmed() {
   if (prev_scenario == 'chats') {
     new_conversation()
-  } else if (prev_scenario == 'board_list') {
+  } else if (prev_scenario == 'kanban') {
     new_board()
   }
 }
@@ -271,10 +277,8 @@ function load_chat(nm) {
   curr_chat = nm;
   var lop = [];
   for (var p in ch.posts) lop.push(p)
-  lop.sort((a,b) => ch.posts[a].when - ch.posts[b].when)
-  lop.forEach( (p) =>
-    load_post_item(ch.posts[p])
-  )
+  lop.sort( function(a,b) { return ch.posts[a].when - ch.posts[b].when; } )
+  lop.forEach( function(p) { load_post_item(ch.posts[p]) } )
   load_chat_title(ch);
   setScenario("posts");
   document.getElementById("tremolaTitle").style.display = 'none';
@@ -288,9 +292,10 @@ function load_chat(nm) {
 }
 
 function load_chat_title(ch) {
+  document.getElementById("tremolaTitle").style.display = 'none';
   var c = document.getElementById("conversationTitle"), bg, box;
   c.style.display = null;
-  c.classList = ch.forgotten ? ['gray'] : []
+  c.setAttribute('classList', ch.forgotten ? ['gray'] : []);
   box  = "<div style='white-space: nowrap;'><div style='text-overflow: ellipsis; overflow: hidden;'><font size=+1><strong>" + escapeHTML(ch.alias) + "</strong></font></div>";
   box += "<div style='color: black; text-overflow: ellipsis; overflow: hidden;'>" + escapeHTML(recps2display(ch.members)) + "</div></div>";
   c.innerHTML = box;
@@ -307,10 +312,8 @@ function load_chat_list()
     if (p != meOnly && !tremola.chats[p]['forgotten'])
       lop.push(p)
   }
-  lop.sort((a,b) => tremola.chats[b]["touched"] - tremola.chats[a]["touched"])
-  lop.forEach( (p) =>
-    load_chat_item(p)
-  )
+  lop.sort( function(a,b) { return tremola.chats[b]["touched"] - tremola.chats[a]["touched"] } )
+  lop.forEach( function(p) { load_chat_item(p) } )
   // forgotten chats: unsorted
   if (!tremola.settings.hide_forgotten_conv)
     for (var p in tremola.chats)
@@ -321,9 +324,14 @@ function load_chat_list()
 function load_chat_item(nm) { // appends a button for conversation with name nm to the conv list
   var cl, mem, item, bg, row, badge, badgeId, cnt;
   cl = document.getElementById('lst:chats');
+  /*
+  console.log("xx cl");
+  console.log(cl);
+  console.log("xx");
+  */
   mem = recps2display(tremola.chats[nm].members)
   item = document.createElement('div');
-  item.style = "padding: 0px 5px 10px 5px; margin: 3px 3px 6px 3px;";
+  // console.log(item);
   if (tremola.chats[nm].forgotten) bg = ' gray'; else bg = ' light';
   row  = "<button class='chat_item_button w100" + bg + "' onclick='load_chat(\"" + nm + "\");' style='overflow: hidden; position: relative;'>";
   row += "<div style='white-space: nowrap;'><div style='text-overflow: ellipsis; overflow: hidden;'>" + tremola.chats[nm].alias + "</div>";
@@ -333,7 +341,8 @@ function load_chat_item(nm) { // appends a button for conversation with name nm 
   row += badge + "</button>";
   row += ""
   item.innerHTML = row;
-  cl.append(item);
+  item.setAttribute('style', "padding: 0px 5px 10px 5px; margin: 3px 3px 6px 3px;");
+  cl.appendChild(item);
   set_chats_badge(nm)
 }
 
@@ -352,7 +361,7 @@ function load_contact_list() {
 
 function load_contact_item(c) { // [ id, { "alias": "thealias", "initial": "T", "color": "#123456" } ] }
   var row, item = document.createElement('div'), bg;
-  item.style = "padding: 0px 5px 10px 5px;";
+  item.setAttribute('style', "padding: 0px 5px 10px 5px;");
   if (!("initial" in c[1])) { c[1]["initial"] = c[1].alias.substring(0,1).toUpperCase(); persist(); }
   if (!("color" in c[1])) { c[1]["color"] = colors[Math.floor(colors.length * Math.random())]; persist(); }
   // console.log("load_c_i", JSON.stringify(c[1]))
@@ -365,7 +374,7 @@ function load_contact_item(c) { // [ id, { "alias": "thealias", "initial": "T", 
   // row += escapeHTML(c[1].alias) + "<br><font size=-2>" + c[0] + "</font></button>";
   // console.log(row);
   item.innerHTML = row;
-  document.getElementById('lst:contacts').append(item);
+  document.getElementById('lst:contacts').appendChild(item);
 }
 
 function fill_members() {
@@ -562,9 +571,7 @@ function recps2nm(rcps) { // use concat of sorted FIDs as internal name for conv
 }
 
 function recps2display(rcps) {
-  var lst = rcps.map(fid => {
-    return fid2display(fid)
-  });
+  var lst = rcps.map( function(fid) { return fid2display(fid); } );
   return '[' + lst.join(', ') + ']';
 }
 
@@ -778,6 +785,10 @@ function b2f_initialize(id) {
     tremola = null;
   if (tremola == null) {
     resetTremola();
+  } else {
+    if (!tremola.hasOwnProperty('board')) {
+      tremola.board = {}
+    }
   }
   if (typeof Android == 'undefined')
     console.log("loaded ", JSON.stringify(tremola))

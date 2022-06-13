@@ -7,7 +7,7 @@ var overlayIsActive = false;
 var display_or_not = [
   'div:qr', 'div:back',
   'core', 'lst:chats', 'lst:posts', 'lst:contacts', 'lst:members', 'the:connex',
-  'lst:board_list', 'div:footer', 'div:textarea', 'div:confirm-members', 'plus',
+  'lst:kanban', 'div:footer', 'div:textarea', 'div:confirm-members', 'plus',
   'div:settings', 'div:board'
 ];
 
@@ -21,8 +21,8 @@ var scenarioDisplay = {
   'connex':   ['div:qr', 'core', 'the:connex', 'div:footer', 'plus'],
   'members':  ['div:back', 'core', 'lst:members', 'div:confirm-members'],
   'settings': ['div:back', 'div:settings'],
-  'board': ['div:back', 'core', 'div:board'],
-  'board_list': ['div:qr', 'core','lst:board_list', 'div:footer', 'plus']
+  'kanban':   ['div:qr', 'core','lst:kanban', 'div:footer', 'plus'],
+  'board':    ['div:back', 'core', 'div:board']
 }
 
 var scenarioMenu = {
@@ -62,7 +62,7 @@ var scenarioMenu = {
                 ['Reload', 'reload_curr_board'],
                 ['Debug', 'ui_debug']],
 
-  'board_list': [['Settings', 'menu_settings'],
+  'kanban'   : [['Settings', 'menu_settings'],
                      ['About', 'menu_about']]
 
 }
@@ -76,7 +76,7 @@ function onBackPressed() {
     if (curr_scenario == 'chats')
       backend("onBackPressed");
     else if (curr_scenario == 'board')
-      setScenario('board_list')
+      setScenario('kanban')
     else
       setScenario('chats')
   } else {
@@ -94,7 +94,7 @@ function setScenario(s) {
   var lst = scenarioDisplay[s];
   if (lst) {
     // if (s != 'posts' && curr_scenario != "members" && curr_scenario != 'posts') {
-    if (['chats', 'contacts', 'connex', 'board_list'].indexOf(curr_scenario) >= 0) {
+    if (['chats', 'contacts', 'connex', 'kanban'].indexOf(curr_scenario) >= 0) {
       var cl = document.getElementById('btn:'+curr_scenario).classList;
       cl.toggle('active', false);
       cl.toggle('passive', true);
@@ -114,35 +114,42 @@ function setScenario(s) {
       document.getElementById('tremolaTitle').style.position = null;
     }
 
-    if (s == "posts" || s == "settings" || s == "board") {
-
+    if (s == "posts" || s == "board") { // s == "settings" ||
+      document.getElementById('tremolaTitle').style.display = 'none';
       document.getElementById('conversationTitle').style.display = null;
       // document.getElementById('plus').style.display = 'none';
     } else {
       document.getElementById('tremolaTitle').style.display = null;
+      document.getElementById('tremolaTitle').innerHTML = 'T R E M O L A .' + s;
       // if (s == "connex") { /* document.getElementById('plus').style.display = 'none'; */}
       // else { /* document.getElementById('plus').style.display = null; */}
       document.getElementById('conversationTitle').style.display = 'none';
     }
     if (lst.indexOf('div:qr') >= 0) { prev_scenario = s; }
     curr_scenario = s;
-    if (['chats', 'contacts', 'connex', 'board_list'].indexOf(curr_scenario) >= 0) {
+    if (['chats', 'contacts', 'connex', 'kanban'].indexOf(curr_scenario) >= 0) {
       var cl = document.getElementById('btn:'+curr_scenario).classList;
       cl.toggle('active', true);
       cl.toggle('passive', false);
     }
+
+    if (s == 'board')
+      document.getElementById('core').style.height = 'calc(100% - 60px)';
+    else
+      document.getElementById('core').style.height = 'calc(100% - 118px)';
   }
 }
 
 function btnBridge(e) {
   var e = e.id, m = '';
-  if (['btn:chats','btn:posts','btn:contacts','btn:connex', 'btn:board_list'].indexOf(e) >= 0)
+  if (['btn:chats','btn:posts','btn:contacts','btn:connex', 'btn:kanban'].indexOf(e) >= 0)
     { setScenario(e.substring(4)); }
   if (e == 'btn:menu') {
     if (scenarioMenu[curr_scenario].length == 0)
       return;
     document.getElementById("menu").style.display = 'initial';
     document.getElementById("overlay-trans").style.display = 'initial';
+    // document.getElementById("board-overlay-bg").style.display = 'initial';
     scenarioMenu[curr_scenario].forEach(function(e){
       m += "<button class=menu_item_button ";
       m += "onclick='" + e[1] + "();'>" + e[0] + "</button><br>";
@@ -167,9 +174,12 @@ function menu_settings() {
 
   document.getElementById("tremolaTitle").style.display = 'none';
   */
+  /*
   var c = document.getElementById("conversationTitle");
   c.style.display = null;
   c.innerHTML = "<div style='text-align: center;'><font size=+1><strong>Settings</strong></font></div>";
+  */
+  document.getElementById("tremolaTitle").innerHTML = '<div style="margin-top: 6px; margin-left: 3px;">T R E M O L A .settings</div>';
 }
 
 function closeOverlay(){
@@ -180,6 +190,7 @@ function closeOverlay(){
   document.getElementById('new_contact-overlay').style.display = 'none';
   document.getElementById('confirm_contact-overlay').style.display = 'none';
   document.getElementById('overlay-bg').style.display = 'none';
+  // document.getElementById('board-overlay-bg').style.display = 'none';
   document.getElementById('overlay-trans').style.display = 'none';
   document.getElementById('about-overlay').style.display = 'none';
   document.getElementById('edit-overlay').style.display = 'none';
@@ -230,7 +241,7 @@ function plus_button() {
     menu_new_contact();
   } else if (curr_scenario == 'connex') {
     menu_new_pub();
-  } else if (curr_scenario == 'board_list') {
+  } else if (curr_scenario == 'kanban') {
     menu_new_board();
   }
 }

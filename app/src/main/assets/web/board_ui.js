@@ -13,15 +13,66 @@ const Color = {
   ORANGE: 'orange'
 }
 
+function allowDrop(ev) {
+  ev.preventDefault();
+}
+
+function myTouchFct(ev) {
+  console.log('touch');
+  console.log(ev);
+}
+
+function dragStart(ev) {
+  console.log('drag started ' + ev.target.id);
+  ev.dataTransfer.setData("text", ev.target.id);
+}
+
+function dragDrop(ev) {
+  ev.preventDefault();
+  console.log('dragDrop', ev.target);
+  console.log(ev.target);
+  var s = ev.dataTransfer.getData("text").split('-');
+  var t = ev.target.id.split('-');
+  if (t.length == 1) {
+    t = ev.target.parentNode.id.split('-');
+    if (t.length == 1)
+      t = ev.target.parentNode.parentNode.id.split('-');
+  }
+  console.log(s, t);
+  if (s[1] == 'item') {
+    if (t[1] == 'item') {
+      var oldColID = tremola.board[curr_board].items[s[0]].curr_column;
+      var newColID = tremola.board[curr_board].items[t[0]].curr_column;
+      var newPos = tremola.board[curr_board].items[t[0]].position;
+      if (oldColID != newColID)
+        moveItem(curr_board, s[0], newColID);
+      ui_change_item_order(s[0], newPos);
+    } else if (t[1] == 'columnHdr')
+      moveItem(curr_board, s[0], t[0]);
+    return;
+  }
+  if (s[1] == 'columnWrapper') {
+    var colID;
+    if (t[1] == 'columnWrapper' || t[1] == 'columnHdr')
+      colID = t[0];
+    else if (t[1] == 'item')
+      colID = tremola.board[curr_board].items[t[0]].curr_column;
+    console.log('colID', colID);
+    var targetPos = tremola.board[curr_board].columns[colID].position;
+    ui_move_column(s[0], targetPos);
+    return;
+  }
+}
+
 function load_board_list() {
-  document.getElementById('lst:board_list').innerHTML = '';
+  document.getElementById('lst:kanban').innerHTML = '';
   var bid;
   for (bid in tremola.board) {
     var cl, mem, item, bg, row, badge, badgeId, cnt;
-    cl = document.getElementById('lst:board_list');
+    cl = document.getElementById('lst:kanban');
     mem = recps2display(tremola.board[bid].members)
     item = document.createElement('div');
-    item.style = "padding: 0px 5px 10px 5px; margin: 3px 3px 6px 3px;";
+    item.setAttribute('style', "padding: 0px 5px 10px 5px; margin: 3px 3px 6px 3px;");
     if (tremola.board[bid].forgotten) bg = ' gray'; else bg = ' light';
     row  = "<button class='board_item_button w100" + bg + "' onclick='load_board(\"" + bid + "\");' style='overflow: hidden; position: relative;'>";
     row += "<div style='white-space: nowrap;'><div style='text-overflow: ellipsis; overflow: hidden;'>" + tremola.board[bid].name + "</div>";
@@ -31,7 +82,7 @@ function load_board_list() {
     row += badge + "</button>";
     row += ""
     item.innerHTML = row;
-    cl.append(item);
+    cl.appendChild(item);
   }
 }
 
@@ -41,9 +92,9 @@ function load_board(bid) { //switches scene to board and changes title to board 
 
   var title = document.getElementById("conversationTitle"), bg, box;
   title.style.display = null;
-  title.classList = bid.forgotten ? ['gray'] : []
-  box  = "<div style='white-space: nowrap;'><div style='text-overflow: ellipsis; overflow: hidden;text-align: center;'><font size=+2><strong>" + "Board: " + escapeHTML(b.name) + "</strong></font></div>";
-  box += "<div style='color: black; text-overflow: ellipsis; overflow: hidden;text-align: center;'>" + escapeHTML(recps2display(b.members)) + "</div></div>";
+  title.setAttribute('classList', bid.forgotten ? ['gray'] : []);
+  box  = "<div style='white-space: nowrap;'><div style='text-overflow: ellipsis; overflow: hidden;text-align: left;'><font size=+2><strong>" + "Kanban: " + escapeHTML(b.name) + "</strong></font></div>";
+  box += "<div style='color: black; text-overflow: ellipsis; overflow: hidden;text-align: left;'>" + escapeHTML(recps2display(b.members)) + "</div></div>";
   title.innerHTML = box;
 
   document.getElementById("div:columns_container").innerHTML = "" //clear old content
@@ -134,7 +185,7 @@ function menu_history() {
   overlayIsActive = true;
   var board = tremola.board[curr_board]
 
-  var reversedHistory = [...board.history].reverse()
+  var reversedHistory = board.history.slice().reverse()
 
   for(var i in reversedHistory) {
 
@@ -156,7 +207,7 @@ function menu_history() {
 
 function menu_new_board() {
   fill_members();
-  prev_scenario = 'board_list';
+  prev_scenario = 'kanban';
   setScenario("members");
 
   document.getElementById("div:textarea").style.display = 'none';
@@ -204,15 +255,15 @@ function load_column(columnID) {
   var column_name = board.columns[columnID].name
   var column_position = board.columns[columnID].position
 
-  var columnsHTML = "<div class='column_wrapper' id='" + columnID + "-columnWrapper' style='margin-left:5px;order:" + column_position + ";'>"
+  var columnsHTML = "<div class='column_wrapper column light' id='" + columnID + "-columnWrapper' style='margin-left:5px;order:" + column_position + ";' draggable='true' ondragstart='dragStart(event)'>"
   columnsHTML += "<div class='column light'>"
-  columnsHTML += "<div class='column_hdr'>"
+  columnsHTML += "<div class='column_hdr' id='" + columnID + "-columnHdr' ondrop='dragDrop(event)' ondragover='allowDrop(event)'>"
   columnsHTML += "<div style='float: left;max-width: 70%;margin-left:10px;'><b>" + column_name + "</b></div>"
   columnsHTML += "<div class='dropdown_menu' style='float: right;margin-right:5px;'>"
   columnsHTML += "<div onclick='context_menu_column_options(\""+ columnID + "\")' style='float: right;font-weight: bold;'>...</div>"
   columnsHTML += "<div class='context_menu' id='context_options-" + columnID +"'> "
   columnsHTML += "</div></div></div>"
-  columnsHTML += "<div style='overflow:auto;max-height:60vh;'><div class='column_content' id='" + columnID + "-columnContent'></div></div>"
+  columnsHTML += "<div style='overflow:auto;max-height: calc(100vh - 140px);'><div class='column_content' id='" + columnID + "-columnContent'></div></div>"
   //columnsHTML += "<div style='order: 100000;width: 95%; margin: auto;'><button class='board_item_button w100' onclick='menu_create_column_item(\"" + columnID +"\")' style='overflow: hidden; position: relative;'>New Card</button></div>"
   columnsHTML += "<div class='column_footer' onclick='menu_create_item(\"" + columnID +"\")'>+ Add new card</div>"
   columnsHTML +="</div></div>"
@@ -234,9 +285,9 @@ function context_menu_column_options(columnID) {
   var context_menu = document.getElementById('context_options-' + columnID)
   context_menu.style.display = 'block'
   curr_context_menu = 'context_options-' + columnID
-  context_menu.innerHTML = "<button class='context_options_btn' onclick='menu_create_item(\"" + columnID + "\")'>Add new card</button>"
-  context_menu.innerHTML += "<button class='context_options_btn' onclick='contextmenu_move_column(\"" + columnID + "\")'>Move List...</button>"
-  context_menu.innerHTML += "<button class='context_options_btn' onclick='menu_rename_column(\"" + columnID + "\")'>Rename...</button>"
+  context_menu.innerHTML  = "<button class='context_options_btn' onclick='menu_rename_column(\"" + columnID + "\")'>Rename list</button>"
+  context_menu.innerHTML += "<button class='context_options_btn' onclick='menu_create_column_item(\"" + columnID + "\")'>Add new card</button>"
+  // context_menu.innerHTML += "<button class='context_options_btn' onclick='contextmenu_move_column(\"" + columnID + "\")'>Move List...</button>"
   context_menu.innerHTML += "<button class='context_options_btn' onclick='btn_remove_column(\""+ columnID + "\")' style='color:red;'>Delete</button>"
   overlayIsActive = true
 }
@@ -244,7 +295,8 @@ function context_menu_column_options(columnID) {
 function contextmenu_move_column(columnID) {
   document.getElementById('context_options-' + columnID).innerHTML = ''
   var board = tremola.board[curr_board]
-  var availablePos = Array.from(Array(board.numOfActiveColumns), (_, i) => i+1)
+  var availablePos = [];
+  for (var i = 1; i <= board.numOfActiveColumns; i++) { availablePos.push(i); }
   availablePos.splice(availablePos.indexOf(board.columns[columnID].position), 1)
   var menuHTML = "<button class='context_options_btn' onclick='context_menu_column_options(\"" + columnID + "\")'> ... </button>"
 
@@ -285,6 +337,7 @@ function ui_remove_column(columnID) {
 }
 
 function ui_move_column(columnID, insertPos) {
+  console.log('move', columnID, insertPos);
   closeOverlay()
   insertPos = parseInt(insertPos)
   var board = tremola.board[curr_board]
@@ -349,8 +402,7 @@ function load_item(itemID) {
   if(board.items[itemID].removed || board.columns[columnID].removed)
     return
 
-
-  var itemHTML = "<div class='column_item' style='order:" + pos + ";overflow: auto;' id='"+ itemID +"-item' onclick='item_menu(\"" + itemID + "\")'>" //board_item_button
+  var itemHTML = "<div class='column_item' style='order:" + pos + ";overflow: auto; background-color: #ffe7f1; border-top: 2px dotted blue;' id='"+ itemID +"-item' onclick='item_menu(\"" + itemID + "\")'  draggable='true' ondragstart='dragStart(event)' ondrop='dragDrop(event)' ondragover='allowDrop(event)'>" //board_item_button
   //itemHTML += "<button class='item_button' onclick='item_menu(\"" + itemID + "\")'>"
   itemHTML += "<div style='padding-top: 10px; padding-left: 10px; padding-bottom: 10px'> <b><font id='"+ itemID +"-itemHdr' color='" + color +"'>" + name + "</font></b></div>"
   itemHTML += "<div id='"+ itemID +"-itemDescr' style='font: 12px Helvetica Neue, sans-serif; color: #808080;overflow-wrap: break-word;max-height: 4.8em;overflow: hidden;padding-left: 10px;padding-right: 10px;'>" + board.items[itemID].description + "</div>"
@@ -368,8 +420,8 @@ function load_item(itemID) {
 
   itemHTML += "</div>" //</button>
 
-  document.getElementById(columnID + "-columnContent").innerHTML += itemHTML
-
+  document.getElementById(columnID + "-columnContent").innerHTML += itemHTML;
+  document.getElementById(itemID + "-item").addEventListener('mousedown', myTouchFct, false);
 }
 
 function load_all_items() {
@@ -391,13 +443,16 @@ function item_menu(itemID) {
   document.getElementById('btn:item_menu_description_save').style.display = 'none'
   document.getElementById('btn:item_menu_description_cancel').style.display = 'none'
   document.getElementById('item_menu_comment_text').value = ''
+  document.getElementById('item_menu_title').innerHTML = "<font color='" + item.color + "'>" + item.name + "</font"
+  // console.log(item)
   document.getElementById('item_menu_title').innerHTML = "<font id='"+ itemID +"-itemMenuHdr' color='" + item.color + "'>" + item.name + "</font"
 
   //load description
   var descDiv = document.getElementById('div:item_menu_description')
   document.getElementById('div:item_menu_description_text').value = item.description
 
-  document.getElementById('div:item_menu_description_text').addEventListener('focus', (event) => {
+  document.getElementById('div:item_menu_description_text').addEventListener('focus',
+    function(event) {
              document.getElementById('btn:item_menu_description_save').style.display = 'initial'
              document.getElementById('btn:item_menu_description_cancel').style.display = 'initial'
              event.target.style.border = "solid 2px black"
@@ -407,7 +462,7 @@ function item_menu(itemID) {
   //load chat
   var draftDiv = document.getElementById('div:item_menu_comments')
   var commentsHTML = ''
-  var commentsList = [...item.comments].reverse()
+  var commentsList = item.comments.slice().reverse()
   for(var i in commentsList) {
     var author_name = tremola.contacts[commentsList[i][0]].alias
     var author_color = tremola.contacts[commentsList[i][0]].color
@@ -463,8 +518,8 @@ function contextmenu_change_column() {
     launch_snackbar("There is only one list")
   }
 
-  var columnPositionList = Object.keys(board.columns).map((key) => [key, board.columns[key].position])
-  columnPositionList.sort((a, b) => a[1] - b[1])
+  var columnPositionList = Object.keys(board.columns).map(function(key) { return [key, board.columns[key].position]; } )
+  columnPositionList.sort( function(a, b) { return a[1] - b[1]; } )
 
   for(var i in columnPositionList) {
     var columnID =  columnPositionList[i][0]
@@ -509,7 +564,7 @@ function contextmenu_item_change_position() {
 
     itemPosList.push([i, item.position])
   }
-  itemPosList.sort((a, b) => a[1] -b[1])
+  itemPosList.sort( function(a, b) { return a[1] -b[1]; } )
   console.log(itemPosList)
   var posHTML = "<div class='context_menu' id='context_options-" + curr_item + "-changePosition'>"
   for(var i in itemPosList) {
