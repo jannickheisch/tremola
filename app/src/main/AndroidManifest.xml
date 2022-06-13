@@ -3,7 +3,6 @@
     package="nz.scuttlebutt.tremola">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
@@ -26,7 +25,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Tremola.Launcher"
         android:background="@android:color/white"> <!-- holo_green_light" -->
-        <activity android:name=".MainActivity">
+        <activity android:name=".MainActivity"
+                  android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
