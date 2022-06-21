@@ -66,8 +66,10 @@ function dragDrop(ev) {
 
 function load_board_list() {
   document.getElementById('lst:kanban').innerHTML = '';
-  var bid;
-  for (bid in tremola.board) {
+  var bidTimestamp = Object.keys(tremola.board).map(function(key) {return [key, tremola.board[key].lastUpdate]}) // [0] = bid, [1] = timestamp
+  bidTimestamp.sort(function(a, b) { return b[1] - a[1]; })
+  for (var i in bidTimestamp) {
+    var bid =  bidTimestamp[i][0]
     var board = tremola.board[bid]
     if(board.forgotten && tremola.settings.hide_forgotten_boards)
       continue
@@ -80,18 +82,36 @@ function load_board_list() {
     row  = "<button class='board_item_button w100" + bg + "' onclick='load_board(\"" + bid + "\");' style='overflow: hidden; position: relative;'>";
     row += "<div style='white-space: nowrap;'><div style='text-overflow: ellipsis; overflow: hidden;'>" + board.name + "</div>";
     row += "<div style='text-overflow: clip; overflow: ellipsis;'><font size=-2>" + escapeHTML(mem) + "</font></div></div>";
-    badgeId = bid + "-badge"
+    badgeId = bid + "-badge_board"
     badge= "<div id='" + badgeId + "' style='display: none; position: absolute; right: 0.5em; bottom: 0.9em; text-align: center; border-radius: 1em; height: 2em; width: 2em; background: var(--red); color: white; font-size: small; line-height:2em;'>&gt;9</div>";
     row += badge + "</button>";
     row += ""
     item.innerHTML = row;
     cl.appendChild(item);
+    ui_set_board_list_badge(bid)
   }
+}
+
+function ui_set_board_list_badge(bid) {
+  var board = tremola.board[bid]
+  var e = document.getElementById(bid + "-badge_board")
+  var cnt
+  if (board.unreadEvents == 0) {
+    e.style.display = 'none';
+    return
+  }
+  e.style.display = null;
+  if (board.unreadEvents > 9) cnt = ">9"; else cnt = "" + board.unreadEvents;
+  e.innerHTML = cnt
 }
 
 function load_board(bid) { //switches scene to board and changes title to board name
   curr_board = bid
   var b = tremola.board[bid]
+
+  b.unreadEvents = 0
+  persist()
+  ui_set_board_list_badge(bid)
 
   var title = document.getElementById("conversationTitle"), bg, box;
   title.style.display = null;
@@ -110,6 +130,7 @@ function load_board(bid) { //switches scene to board and changes title to board 
 
   load_all_columns()
   load_all_items()
+
 }
 
 function ui_update_Board(bid, old_state) {
