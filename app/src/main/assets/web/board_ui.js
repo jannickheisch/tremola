@@ -68,14 +68,17 @@ function load_board_list() {
   document.getElementById('lst:kanban').innerHTML = '';
   var bid;
   for (bid in tremola.board) {
+    var board = tremola.board[bid]
+    if(board.forgotten && tremola.settings.hide_forgotten_boards)
+      continue
     var cl, mem, item, bg, row, badge, badgeId, cnt;
     cl = document.getElementById('lst:kanban');
-    mem = recps2display(tremola.board[bid].members)
+    mem = recps2display(board.members)
     item = document.createElement('div');
     item.setAttribute('style', "padding: 0px 5px 10px 5px; margin: 3px 3px 6px 3px;");
-    if (tremola.board[bid].forgotten) bg = ' gray'; else bg = ' light';
+    if (board.forgotten) bg = ' gray'; else bg = ' light';
     row  = "<button class='board_item_button w100" + bg + "' onclick='load_board(\"" + bid + "\");' style='overflow: hidden; position: relative;'>";
-    row += "<div style='white-space: nowrap;'><div style='text-overflow: ellipsis; overflow: hidden;'>" + tremola.board[bid].name + "</div>";
+    row += "<div style='white-space: nowrap;'><div style='text-overflow: ellipsis; overflow: hidden;'>" + board.name + "</div>";
     row += "<div style='text-overflow: clip; overflow: ellipsis;'><font size=-2>" + escapeHTML(mem) + "</font></div></div>";
     badgeId = bid + "-badge"
     badge= "<div id='" + badgeId + "' style='display: none; position: absolute; right: 0.5em; bottom: 0.9em; text-align: center; border-radius: 1em; height: 2em; width: 2em; background: var(--red); color: white; font-size: small; line-height:2em;'>&gt;9</div>";
@@ -259,7 +262,14 @@ function ui_update_board_name(bid, new_name) {
     box += "<div style='color: black; text-overflow: ellipsis; overflow: hidden;text-align: left;'>" + escapeHTML(recps2display(board.members)) + "</div></div>";
     title.innerHTML = box;
   }
+}
 
+function board_toggle_forget() {
+  var board = tremola.board[curr_board]
+  board.forgotten = !board.forgotten
+  persist()
+  load_board_list()
+  setScenario('kanban')
 }
 
 /*

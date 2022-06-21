@@ -332,7 +332,7 @@ input:checked + .slider:before {
   font-size: medium;
   border-radius: 4pt;
   box-shadow: 0 0 5px rgba(0,0,0,0.7);
-  background-color: #c1e1c1;
+  /*background-color: #c1e1c1;*/
 }
 
 .columns_container {

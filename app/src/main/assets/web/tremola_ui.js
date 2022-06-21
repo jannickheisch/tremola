@@ -61,6 +61,7 @@ var scenarioMenu = {
                 ['Rename Kanban Board', 'menu_rename_board'],
                 ['History', 'menu_history'],
                 ['Reload', 'reload_curr_board'],
+                ['(un)Forget', 'board_toggle_forget'],
                 ['Debug', 'ui_debug']],
 
   'kanban'   : [['New Kanban board', 'menu_new_board'],
