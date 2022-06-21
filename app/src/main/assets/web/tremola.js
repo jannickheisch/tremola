@@ -149,9 +149,21 @@ function edit_confirmed() {
       console.log('empty')
       return
     }
-
     createBoard(val, recps);
     setScenario("kanban"); // board_list
+  } else if (edit_target == 'board_rename') {
+    var board = tremola.board[curr_board]
+    if(val == '') {
+      menu_edit('board_rename', 'Enter a new name for this board', board.name)
+      launch_snackbar("Enter a name")
+      return
+    }
+    if(val == board.name) {
+      menu_edit('board_rename', 'Enter a new name for this board', board.name)
+      launch_snackbar('This board already have this name')
+      return
+    }
+    renameBoard(curr_board, val)
   } else if (edit_target == 'board_new_column') {
     if(val == '') {
       menu_edit('board_new_column', 'Enter name of new List: ', '')

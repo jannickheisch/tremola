@@ -11,6 +11,7 @@ var curr_rename_item;
 
 const Operation = {
   BOARD_CREATE: 'board/create',
+  BOARD_RENAME: 'board/rename',
   COLUMN_CREATE: 'column/create',
   ITEM_CREATE: 'item/create',
   COLUMN_REMOVE: 'column/remove',
@@ -33,6 +34,16 @@ function createBoard(name, recps) {
                'prev': null
              }
   board_send_to_backend(data, recps)
+}
+
+function renameBoard(bid, name) {
+  var board = tremola.board[bid]
+  var data = {
+                 'bid': bid,
+                 'cmd': [Operation.BOARD_RENAME, name],
+                 'prev': board.curr_prev
+               }
+  board_send_to_backend(data, board.members)
 }
 
 function createColumn(bid, name) {
@@ -509,6 +520,12 @@ function apply_operation(bid, operationID, apply_on_ui) {
     case Operation.BOARD_CREATE:
       historyMessage += "created the board \"" + curr_op.body.cmd[1] + "\""
       board.name = curr_op.body.cmd[1]
+      break
+    case Operation.BOARD_RENAME:
+      historyMessage += "renamed the board \"" + board.name + "\" to \"" + curr_op.body.cmd[1] + "\""
+      board.name = curr_op.body.cmd[1]
+      if(apply_on_ui)
+        ui_update_board_name(bid, curr_op.body.cmd[1])
       break
     case Operation.COLUMN_CREATE:
       historyMessage += "created the list \"" + curr_op.body.cmd[1] +"\""

@@ -355,7 +355,6 @@ input:checked + .slider:before {
 .column_wrapper{
   flex: 0 0 36vw;
   width: 36vw;
-  background-color: #ebf4fa;
 }
 
 .column_content{

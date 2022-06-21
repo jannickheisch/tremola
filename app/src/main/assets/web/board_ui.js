@@ -111,6 +111,12 @@ function load_board(bid) { //switches scene to board and changes title to board 
 
 function ui_update_Board(bid, old_state) {
   var board = tremola.board[bid]
+
+  // board
+  if(board.name != old_state.name)
+    ui_update_board_name(bid, board.name)
+
+  // columns
   for(var i in board.columns) {
     var old_column = old_state.columns[i]
     var new_column = board.columns[i]
@@ -127,6 +133,7 @@ function ui_update_Board(bid, old_state) {
       ui_rename_column(i, new_column.name)
   }
 
+  //items
   for(var i in board.items) {
     var old_item = old_state.items[i]
     var new_item = board.items[i]
@@ -234,6 +241,27 @@ function new_board() {
   menu_edit('new_board', 'Enter the name of the new board', '')
 }
 
+function menu_rename_board() {
+  var board = tremola.board[curr_board]
+  menu_edit('board_rename', 'Enter a new name for this board', board.name)
+}
+
+function ui_update_board_name(bid, new_name) {
+  var board = tremola.board[bid]
+  // update boardlist
+  load_board_list()
+  // update title name
+  if(curr_board == bid) {
+    var title = document.getElementById("conversationTitle"), bg, box;
+    title.style.display = null;
+    title.setAttribute('classList', bid.forgotten ? ['gray'] : []);
+    box  = "<div style='white-space: nowrap;'><div style='text-overflow: ellipsis; overflow: hidden;text-align: left;'><font size=+2><strong>" + "Kanban: " + escapeHTML(board.name) + "</strong></font></div>";
+    box += "<div style='color: black; text-overflow: ellipsis; overflow: hidden;text-align: left;'>" + escapeHTML(recps2display(board.members)) + "</div></div>";
+    title.innerHTML = box;
+  }
+
+}
+
 /*
   Columns
 */
@@ -255,7 +283,7 @@ function load_column(columnID) {
   var column_name = board.columns[columnID].name
   var column_position = board.columns[columnID].position
 
-  var columnsHTML = "<div class='column_wrapper column light' id='" + columnID + "-columnWrapper' style='margin-left:5px;order:" + column_position + ";' draggable='true' ondragstart='dragStart(event)'>"
+  var columnsHTML = "<div class='column_wrapper column' id='" + columnID + "-columnWrapper' style='margin-left:5px;order:" + column_position + ";' draggable='true' ondragstart='dragStart(event)'>"
   columnsHTML += "<div class='column light'>"
   columnsHTML += "<div class='column_hdr' id='" + columnID + "-columnHdr' ondrop='dragDrop(event)' ondragover='allowDrop(event)'>"
   columnsHTML += "<div style='float: left;max-width: 70%;margin-left:10px;'><b>" + column_name + "</b></div>"

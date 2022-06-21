@@ -58,12 +58,14 @@ var scenarioMenu = {
   'settings' : [],
 
   'board'    : [['Add list', 'menu_new_column'],
+                ['Rename Kanban Board', 'menu_rename_board'],
                 ['History', 'menu_history'],
                 ['Reload', 'reload_curr_board'],
                 ['Debug', 'ui_debug']],
 
-  'kanban'   : [['Settings', 'menu_settings'],
-                     ['About', 'menu_about']]
+  'kanban'   : [['New Kanban board', 'menu_new_board'],
+                ['Settings', 'menu_settings'],
+                ['About', 'menu_about']]
 
 }
 
