@@ -2,7 +2,7 @@
 
 "use strict";
 
-const Color = {
+const Color = { // all available colors for card title
   BLACK: 'black',
   RED: 'red',
   GREEN: 'green',
@@ -57,7 +57,6 @@ function dragDrop(ev) {
       colID = t[0];
     else if (t[1] == 'item')
       colID = tremola.board[curr_board].items[t[0]].curr_column;
-    console.log('colID', colID);
     var targetPos = tremola.board[curr_board].columns[colID].position;
     ui_move_column(s[0], targetPos);
     return;
@@ -71,6 +70,8 @@ function load_board_list() {
   for (var i in bidTimestamp) {
     var bid =  bidTimestamp[i][0]
     var board = tremola.board[bid]
+    var date = new Date(bidTimestamp[i][1])
+    date = date.toDateString() + ' ' + date.toTimeString().substring(0,5);
     if(board.forgotten && tremola.settings.hide_forgotten_boards)
       continue
     var cl, mem, item, bg, row, badge, badgeId, cnt;
@@ -81,7 +82,7 @@ function load_board_list() {
     if (board.forgotten) bg = ' gray'; else bg = ' light';
     row  = "<button class='board_item_button w100" + bg + "' onclick='load_board(\"" + bid + "\");' style='overflow: hidden; position: relative;'>";
     row += "<div style='white-space: nowrap;'><div style='text-overflow: ellipsis; overflow: hidden;'>" + board.name + "</div>";
-    row += "<div style='text-overflow: clip; overflow: ellipsis;'><font size=-2>" + escapeHTML(mem) + "</font></div></div>";
+    row += "<div style='text-overflow: clip; overflow: ellipsis;'><font size=-2>" + escapeHTML(mem) + ", </font><font size=-3>last changed: " + date +"</font> </div></div>";
     badgeId = bid + "-badge_board"
     badge= "<div id='" + badgeId + "' style='display: none; position: absolute; right: 0.5em; bottom: 0.9em; text-align: center; border-radius: 1em; height: 2em; width: 2em; background: var(--red); color: white; font-size: small; line-height:2em;'>&gt;9</div>";
     row += badge + "</button>";
@@ -97,11 +98,11 @@ function ui_set_board_list_badge(bid) {
   var e = document.getElementById(bid + "-badge_board")
   var cnt
   if (board.unreadEvents == 0) {
-    e.style.display = 'none';
+    e.style.display = 'none'
     return
   }
-  e.style.display = null;
-  if (board.unreadEvents > 9) cnt = ">9"; else cnt = "" + board.unreadEvents;
+  e.style.display = null
+  if (board.unreadEvents > 9) cnt = ">9"; else cnt = "" + board.unreadEvents
   e.innerHTML = cnt
 }
 
@@ -121,8 +122,6 @@ function load_board(bid) { //switches scene to board and changes title to board 
   title.innerHTML = box;
 
   document.getElementById("div:columns_container").innerHTML = "" //clear old content
-
-  //document.getElementById("div:columns_container").innerHTML = "<div class='column_wrapper' style='order: 100000;'><button class='board_item_button w100' onclick='menu_edit(\"board_new_column\", \"Enter name of new List: \", \"\")' style='overflow: hidden; position: relative;'>New List</button></div>"
   setScenario('board')
   document.getElementById("tremolaTitle").style.display = 'none';
   document.getElementById("tremolaTitle").style.position = 'fixed';
@@ -132,7 +131,12 @@ function load_board(bid) { //switches scene to board and changes title to board 
   load_all_items()
 
 }
-
+/**
+ * Compares the previous snapshot of the Kanban board with the current one and updates the elements accordingly
+ *
+ * @param {string} bid - Id of the kanban board
+ * @param {object} old_state - Previous snapshot of the kanban board
+ */
 function ui_update_Board(bid, old_state) {
   var board = tremola.board[bid]
 
@@ -166,7 +170,7 @@ function ui_update_Board(bid, old_state) {
       load_item(i)
       return
     }
-    if(new_item.removed && (old_item.removed != new_column.removed)) {
+    if(new_item.removed && (old_item.removed != new_item.removed)) {
       ui_remove_item(i)
       return
     }
@@ -185,6 +189,13 @@ function ui_update_Board(bid, old_state) {
   }
 }
 
+/**
+ * Compares two arrays and returns whether the are equal
+ *
+ * @param {Array} array1
+ * @param {Array} array2
+ * @return {boolean} - Whether the two given arrays are equal
+ */
 function equalArrays(array1, array2) {
   if(array1.length != array2.length)
     return false
@@ -396,7 +407,6 @@ function ui_remove_column(columnID) {
 }
 
 function ui_move_column(columnID, insertPos) {
-  console.log('move', columnID, insertPos);
   closeOverlay()
   insertPos = parseInt(insertPos)
   var board = tremola.board[curr_board]
@@ -461,7 +471,7 @@ function load_item(itemID) {
   if(board.items[itemID].removed || board.columns[columnID].removed)
     return
 
-  var itemHTML = "<div class='column_item' style='order:" + pos + ";overflow: auto; background-color: #ffe7f1; border-top: 2px dotted blue;' id='"+ itemID +"-item' onclick='item_menu(\"" + itemID + "\")'  draggable='true' ondragstart='dragStart(event)' ondrop='dragDrop(event)' ondragover='allowDrop(event)'>" //board_item_button
+  var itemHTML = "<div class='column_item' style='order:" + pos + ";overflow: auto;' id='"+ itemID +"-item' onclick='item_menu(\"" + itemID + "\")'  draggable='true' ondragstart='dragStart(event)' ondrop='dragDrop(event)' ondragover='allowDrop(event)'>" //board_item_button
   //itemHTML += "<button class='item_button' onclick='item_menu(\"" + itemID + "\")'>"
   itemHTML += "<div style='padding-top: 10px; padding-left: 10px; padding-bottom: 10px'> <b><font id='"+ itemID +"-itemHdr' color='" + color +"'>" + name + "</font></b></div>"
   itemHTML += "<div id='"+ itemID +"-itemDescr' style='font: 12px Helvetica Neue, sans-serif; color: #808080;overflow-wrap: break-word;max-height: 4.8em;overflow: hidden;padding-left: 10px;padding-right: 10px;'>" + board.items[itemID].description + "</div>"
@@ -503,7 +513,6 @@ function item_menu(itemID) {
   document.getElementById('btn:item_menu_description_cancel').style.display = 'none'
   document.getElementById('item_menu_comment_text').value = ''
   document.getElementById('item_menu_title').innerHTML = "<font color='" + item.color + "'>" + item.name + "</font"
-  // console.log(item)
   document.getElementById('item_menu_title').innerHTML = "<font id='"+ itemID +"-itemMenuHdr' color='" + item.color + "'>" + item.name + "</font"
 
   //load description
@@ -624,7 +633,6 @@ function contextmenu_item_change_position() {
     itemPosList.push([i, item.position])
   }
   itemPosList.sort( function(a, b) { return a[1] -b[1]; } )
-  console.log(itemPosList)
   var posHTML = "<div class='context_menu' id='context_options-" + curr_item + "-changePosition'>"
   for(var i in itemPosList) {
     posHTML += "<button class='context_options_btn' onclick='ui_change_item_order(\""+ curr_item + "\",\""+ itemPosList[i][1] +"\")'>"+ itemPosList[i][1] +"</button>"
@@ -651,9 +659,7 @@ function contextmenu_item_assign() {
     var alias = aliasList[i][0]
     var fid = aliasList[i][1]
     var assigned = board.items[curr_item].assignees.indexOf(fid) >= 0
-    var color = assigned ? "background-color: #17cf32;" : "";
-    console.log(assigned)
-    console.log(color)
+    var color = assigned ? "background-color: #aaf19f;" : "";
 
     assignHTML += "<button class='context_options_btn' style='"+ color+"' onclick='ui_item_assign(\""+ fid + "\")'>" + alias + "</button>"
   }
@@ -722,6 +728,9 @@ function ui_change_item_order(itemID, newPos) {
 function ui_remove_item(itemID) {
   var board = tremola.board[curr_board]
   var column = board.columns[board.items[itemID].curr_column]
+
+  if(!document.getElementById(itemID + '-item'))
+    return
 
   for (var i in column.item_ids) {
     var curr_item = board.items[column.item_ids[i]]

@@ -9,6 +9,7 @@ var curr_item;
 
 var curr_rename_item;
 
+// all available operations
 const Operation = {
   BOARD_CREATE: 'board/create',
   BOARD_RENAME: 'board/rename',
@@ -172,35 +173,27 @@ function board_send_to_backend(data, recps) {
   backend("priv:board " + btoa(data) + " " + recps);
 }
 
-
-
 function updateCurrPrev(bid, e) {
   var board = tremola.board[bid]
   var event_prev = e.body.prev
-  console.log("EVENT_PREVS: " + event_prev)
 
-  board.curr_prev.push(e.key.toString())  // Assumes the backend guarantees the correct order of events
+  board.curr_prev[e.fid] = e.key.toString()
 
   if(event_prev) {
     for(var i in event_prev) {
-      var pos = board.curr_prev.indexOf(event_prev[i])
-      console.log("PREV: " + event_prev[i])
-      console.log("PREV_POS: " + pos)
-      if(pos >= 0) {
-        board.curr_prev.splice(pos, 1)
+      if(board.curr_prev[i] == event_prev[i]) {
+        delete board.curr_prev[i]
       }
     }
   }
-
-  console.log("NEW PREV: " + board.curr_prev)
 }
 
 /*
     ScuttleSort
+    https://github.com/tschudin/scuttlesort
 */
 
 function newOperation(bid, operationID) {
-  console.log("NEW OPERATION: " + operationID)
   var board = tremola.board[bid]
   var op = board.operations[operationID]
   var prev = op.body.prev
@@ -212,7 +205,6 @@ function newOperation(bid, operationID) {
 
   for(var i in prev) {
     let c = prev[i]
-    console.log("C: " + c)
     let p = board.operations[c]
     if(p && p.sorted) {
       p.succ.push(operationID)
@@ -236,7 +228,6 @@ function newOperation(bid, operationID) {
   for(var i= pos; i < board.sortedOperations.length; i++)
     board.operations[board.sortedOperations[i]].indx += 1
   op['indx'] = pos
-  console.log(pos)
   board.sortedOperations.splice(pos, 0, operationID) // _insert
 
   var no_anchor = true
@@ -266,7 +257,6 @@ function newOperation(bid, operationID) {
 }
 
 function add_edge_to_the_past(bid, operationID, causeID) {
-  console.log("add_edge_to_the_past")
   var board = tremola.board[bid]
   var op = board.operations[operationID]
   var cause = board.operations[causeID]
@@ -278,14 +268,11 @@ function add_edge_to_the_past(bid, operationID, causeID) {
 
   let si = op.indx
   let ci = cause.indx
-  console.log("si: " + si + ", ci: "+ ci)
   if(si < ci)
     jump(bid, operationID, ci)
   else
     rise(bid, operationID)
 
-  console.log(visited);
-  // let a = visited.slice() // Array.from(visited)
   var a = [];
   visited.forEach( function(v) { a.push(v); } );
   a.sort( function(a,b) {return b.indx - a.indx;} )
@@ -304,10 +291,6 @@ function rise(bid, operationID) {
   var pos = si
   while( pos < len1 && op.rank > board.operations[board.sortedOperations[pos+1]].rank)
     pos += 1
-  console.log("OP-RANK: " + op.rank)
-  console.log("OTHER-ID: " + board.sortedOperations[pos+1])
-  console.log("OP-ID: " + operationID)
-  console.log("POS: " +  pos)
   while( pos < len1 && op.rank == board.operations[board.sortedOperations[pos+1]].rank
                                && board.sortedOperations[pos+1] < operationID) {
        pos += 1
@@ -345,8 +328,6 @@ function visit(bid, operationID, rnk, visited) {
           throw new Error('cycle');
       if (c.rank <= (rnk + out.length - 1)) {
           c.rank = rnk + out.length;
-          console.log("c.succ");
-          console.log(c.succ);
           out.push(c.succ.slice()); // Array.from(c.succ));
       }
   }
@@ -397,11 +378,6 @@ function board_reload(bid) {
     load_board(bid)
   }
 }
-
-
-
-
-
 
 // sort events with Kahn's algorithm
 // sorted_list[0] contains the hash value of the first operation (according to the logical clock)
@@ -454,61 +430,34 @@ function getSources(events, already_sorted) {
 */
 
 
-// returns true if both given pointers point to the same operations
-function comparePrevs(prev1, prev2) {
-  for(var i in prev1) {
-    if(!(i in prev2))
-      return false
-    if(prev1[i] != prev2[i])
-      return false
-  }
-
-  for(var i in prev2) {
-      if(!(i in prev1))
-        return false
-      if(prev1[i] != prev2[i])
-        return false
-  }
-  return true
-}
-
-/*
-  Functions that manage local storage:
-*/
-
+/**
+ * Creates a snapshot of the given kanban board. It applies all operations and updates the user interface
+ *
+ * @param {string} bid - Id of the kanban board
+ */
 function apply_all_operations(bid) {
   var board = tremola.board[bid]
   board.history = []
 
   var old_state = JSON.parse(JSON.stringify(board));
-  console.log(old_state)
+
   //execute operations and save results to local storage
   for(var i in board.sortedOperations) {
     apply_operation(bid, board.sortedOperations[i], false)
   }
-  console.log(board)
 
   if(curr_board == bid) { // update ui
     ui_update_Board(bid, old_state)
   }
 }
-/*
-function apply_operation_from_pos(bid, pos) {
-  var board = tremola.board[bid]
-  var old_state = JSON.parse(JSON.stringify(board));
 
-  board.history.splice(pos, board.history.length - pos)
-
-  for (var i = pos; i < board.sortedOperations.length; i++) {
-    apply_operation(bid, board.sortedOperations[i], false)
-  }
-
-  if(curr_board == bid) { // update ui
-      ui_update_Board(bid, old_state)
-   }
-}
-*/
-
+/**
+ * Applies the given operation to the current snapshot of the kanban board
+ *
+ * @param {string} bid - Id of the kanban board
+ * @param {string} operationID - Id of the operation, that should be applied
+ * @param {boolean} apply_on_ui - Whether the operation should also be performed on the user interface
+ */
 function apply_operation(bid, operationID, apply_on_ui) {
   var board = tremola.board[bid]
   var curr_op = board['operations'][operationID]
@@ -524,6 +473,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
     case Operation.BOARD_RENAME:
       historyMessage += "renamed the board \"" + board.name + "\" to \"" + curr_op.body.cmd[1] + "\""
       board.name = curr_op.body.cmd[1]
+
       if(apply_on_ui)
         ui_update_board_name(bid, curr_op.body.cmd[1])
       break
@@ -544,6 +494,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
                                     'numOfActiveItems': 0,
                                     'removed': false
                                    }
+
       if(apply_on_ui)
         load_column(curr_op.key)
       break
@@ -570,6 +521,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
       if (!(curr_op.body.cmd[1] in board.columns))
         break
       board.columns[curr_op.body.cmd[1]].name = curr_op.body.cmd[2]
+
       if(apply_on_ui)
         ui_rename_column(curr_op.body.cmd[1], curr_op.body.cmd[2])
       break
@@ -582,7 +534,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
         if(board.items[curr_op.key].removed) {
           break
         }
-        newPos = board.items[curr_op.key].position
+        newPos = board.items[curr_op.key].position //there is already a position assigned to the item
       } else {
         newPos = ++board.columns[curr_op.body.cmd[1]].numOfActiveItems
       }
@@ -598,6 +550,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
                                   'removed': false
                                 }
       board.columns[curr_op.body.cmd[1]].item_ids.push(curr_op.key.toString())
+
       if(apply_on_ui)
         load_item(curr_op.key)
       break
@@ -617,6 +570,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
           curr_item.position--
         }
       }
+
       if(apply_on_ui)
         ui_remove_item(curr_op.body.cmd[1])
       break
@@ -624,6 +578,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
       var item = board.items[curr_op.body.cmd[1]]
       historyMessage += "renamed card \"" + item.name + "\" of list \""+ board.columns[item.curr_column].name +"\" to \"" + curr_op.body.cmd[2] + "\""
       item.name = curr_op.body.cmd[2]
+
       if(apply_on_ui)
         ui_update_item_name(curr_op.body.cmd[1], curr_op.body.cmd[2])
       break
@@ -645,6 +600,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
           i.position--
         }
       }
+
       if(apply_on_ui)
         ui_update_item_move_to_column(curr_op.body.cmd[1], curr_op.body.cmd[2], item.position)
       break
@@ -652,6 +608,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
       var item = board.items[curr_op.body.cmd[1]]
       historyMessage += "changed description of card \"" + item.name + "\" of list \"" + board.columns[item.curr_column].name +"\" from \"" + item.description + "\" to \"" + curr_op.body.cmd[2] + "\""
       item.description = curr_op.body.cmd[2]
+
       if(apply_on_ui)
         ui_update_item_description(curr_op.body.cmd[1], curr_op.body.cmd[2])
       break
@@ -659,6 +616,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
       var item = board.items[curr_op.body.cmd[1]]
       historyMessage += "posted \"" + curr_op.body.cmd[2] + "\" on card \"" + item.name + "\" of list \"" + board.columns[item.curr_column].name + "\""
       item.comments.push([curr_op.fid, curr_op.body.cmd[2]])
+
       if(apply_on_ui)
         ui_item_update_chat(curr_op.body.cmd[1])
       break
@@ -667,6 +625,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
       historyMessage += "assigned \"" + tremola.contacts[curr_op.body.cmd[2]].alias + "\" to card \"" + item.name + "\" of list \"" + board.columns[item.curr_column].name + "\""
       if(item.assignees.indexOf(curr_op.body.cmd[2]) < 0)
         item.assignees.push(curr_op.body.cmd[2])
+
       if(apply_on_ui)
         ui_update_item_assignees(curr_op.body.cmd[1])
       break
@@ -675,6 +634,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
       historyMessage += "unassigned \"" + tremola.contacts[curr_op.body.cmd[2]].alias + "\" from card \"" + item.name + "\" of list \"" + board.columns[item.curr_column].name + "\""
       if(item.assignees.indexOf(curr_op.body.cmd[2]) >= 0)
         item.assignees.splice(item.assignees.indexOf(curr_op.body.cmd[2]), 1)
+
       if(apply_on_ui)
         ui_update_item_assignees(curr_op.body.cmd[1])
       break
@@ -682,6 +642,7 @@ function apply_operation(bid, operationID, apply_on_ui) {
       var item = board.items[curr_op.body.cmd[1]]
       historyMessage += "changed color of card \"" + item.name + "\" to " + curr_op.body.cmd[2]
       item.color = curr_op.body.cmd[2]
+
       if(apply_on_ui)
         ui_update_item_color(curr_op.body.cmd[1], curr_op.body.cmd[2])
       break
@@ -691,40 +652,44 @@ function apply_operation(bid, operationID, apply_on_ui) {
   persist()
 }
 
-function clear_board() { // removes all active columns
+function clear_board() { // removes all active columns from the board
   var board = tremola.board[curr_board]
 
-  for(var i in board .columns) {
+  for(var i in board.columns) {
     removeColumn(curr_board, i)
   }
   closeOverlay()
 }
 
+/*
+    Debug menu
+*/
+
 function ui_debug() {
   closeOverlay()
   document.getElementById('div:debug').style.display = 'initial'
-  document.getElementById('txt:debug').value = debug_toDot()//JSON.stringify(tremola.board[curr_board])
+  document.getElementById('txt:debug').value = debug_toDot()
   // document.getElementById("overlay-trans").style.display = 'initial';
   document.getElementById("overlay-bg").style.display = 'initial';
 }
 
 function debug_toDot() {
-  var exportStr = "digraph {"
-  exportStr += "  rankdir=RL;"
-  exportStr += "  splines=true;"
-  exportStr += "  subgraph dag {"
-  exportStr += "    node[shape=Mrecord];"
+  var exportStr = "digraph {\n"
+  exportStr += "  rankdir=RL;\n"
+  exportStr += "  splines=true;\n"
+  exportStr += "  subgraph dag {\n"
+  exportStr += "    node[shape=Mrecord];\n"
   for (var p in tremola.board[curr_board].sortedOperations) {
-      exportStr += '    ' + '"' + tremola.board[curr_board].sortedOperations[p] + '"' +  ' [label="' + tremola.board[curr_board].sortedOperations[p] + '\\nop=' + tremola.board[curr_board].operations[tremola.board[curr_board].sortedOperations[p]].body.cmd +'\\nr=' + tremola.board[curr_board].operations[tremola.board[curr_board].sortedOperations[p]].rank + '\\nindx=' + tremola.board[curr_board].operations[tremola.board[curr_board].sortedOperations[p]].indx +'"]'
+      exportStr += '    ' + '"' + tremola.board[curr_board].sortedOperations[p] + '"' +  ' [label="hash=' + tremola.board[curr_board].sortedOperations[p] + '\\nop=' + tremola.board[curr_board].operations[tremola.board[curr_board].sortedOperations[p]].body.cmd +'\\nr=' + tremola.board[curr_board].operations[tremola.board[curr_board].sortedOperations[p]].rank + '\\nindx=' + tremola.board[curr_board].operations[tremola.board[curr_board].sortedOperations[p]].indx +'"]\n'
       for (var c in tremola.board[curr_board].operations[tremola.board[curr_board].sortedOperations[p]].body.prev) {
-          exportStr += '    "' + tremola.board[curr_board].sortedOperations[p] +'" -> "' + tremola.board[curr_board].operations[tremola.board[curr_board].sortedOperations[p]].body.prev[c] + '"'
+          exportStr += '    "' + tremola.board[curr_board].sortedOperations[p] +'" -> "' + tremola.board[curr_board].operations[tremola.board[curr_board].sortedOperations[p]].body.prev[c] + '"\n'
     }
   }
-  exportStr += "  }"
-  exportStr += "  subgraph time {"
-  exportStr += "    node[shape=plain];"
-  exportStr += '   " t" -> " " [dir=back];'
-  exportStr += "  }"
+  exportStr += "  }\n"
+  exportStr += "  subgraph time {\n"
+  exportStr += "    node[shape=plain];\n"
+  exportStr += '   " t" -> " " [dir=back];\n'
+  exportStr += "  }\n"
   exportStr +="}"
 
   return exportStr

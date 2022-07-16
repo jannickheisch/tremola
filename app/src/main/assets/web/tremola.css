@@ -369,7 +369,6 @@ input:checked + .slider:before {
 .column_hdr {
   width: 100%;
   margin: 0 auto;
-  margin-top: 7px;
   padding-top:5px;
   padding-bottom:5px;
   overflow-wrap: break-word;
@@ -377,6 +376,7 @@ input:checked + .slider:before {
   border-bottom-color: gray;
   border-bottom-style: solid;
   border-bottom-width: 2px;
+  border-radius: 5pt;
 }
 
 /*

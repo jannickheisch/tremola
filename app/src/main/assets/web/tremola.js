@@ -646,7 +646,7 @@ function resetTremola() { // wipes browser-side content
       "settings": get_default_settings(),
       "board": {}
     }
-    if (typeof Android == 'undefined') //simulates seq for browser only testing
+    if (typeof Android == 'undefined') //simulates feed seq for browser only testing
       tremola.seq = 0
     var n = recps2nm([myId])
     tremola.chats[n] = { "alias":"local notes (for my eyes only)", "posts":{}, "forgotten":false,
@@ -677,7 +677,6 @@ function b2f_new_event(e) { // incoming SSB log event: we get map with three ent
   // console.log('hdr', JSON.stringify(e.header))
   // console.log('pub', JSON.stringify(e.public))
   // console.log('cfd', JSON.stringify(e.confid))
-  console.log(e)
   if (e.confid && e.confid.type == 'post') {
     var i, conv_name = recps2nm(e.confid.recps);
     if (!(conv_name in tremola.chats)) { // create new conversation if needed
@@ -737,7 +736,7 @@ function b2f_new_event(e) { // incoming SSB log event: we get map with three ent
                                "members": e.confid.recps,
                                "forgotten": false,
                                "name" : "",
-                               "curr_prev": [],
+                               "curr_prev": {},
                                "columns": {},
                                "items": {},
                                "numOfActiveColumns": 0,
@@ -761,25 +760,25 @@ function b2f_new_event(e) { // incoming SSB log event: we get map with three ent
 
       newOperation(bid, e.header.ref) // insert Operation in sorted linear timeline via ScuttleSort
 
-      var independentOPs = [Operation.COLUMN_CREATE, Operation.ITEM_CREATE, Operation.COLUMN_REMOVE, Operation.ITEM_REMOVE] // these operations cannot be overwritten, their position in the linear timeline does not affect the resulting board
+      var independentOPs = [Operation.COLUMN_CREATE, Operation.ITEM_CREATE, Operation.COLUMN_REMOVE, Operation.ITEM_REMOVE] // these operations cannot be overwritten; their position in the linear timeline does not affect the resulting board
 
       //  Ui update + update optimization
       if(board.operations[e.header.ref].indx == board.sortedOperations.length -1 || independentOPs.indexOf(board.operations[e.header.ref].body.cmd[0]) >= 0 ) { //if the new event is inserted at the end of the linear timeline or the position is irrelevant for this operation
         if(curr_scenario == 'board' && curr_board == bid)
-          apply_operation(bid, e.header.ref, true) // the board is currently displayed, additionally perform operation on UI
+          apply_operation(bid, e.header.ref, true) // the board is currently displayed; additionally perform operation on UI
         else
           apply_operation(bid, e.header.ref, false)
-      } else {
+      } else
         apply_all_operations(bid)
-      }
-      updateCurrPrev(bid, p)
+
+      updateCurrPrev(bid, p) // prepare "previous pointer" for future operation
 
       //Updating the local timestamp + counter for sorting the bord list
       board.lastUpdate = Date.now()
       if(curr_scenario != 'board' || curr_board != bid)
         board.unreadEvents++
 
-      load_board_list();
+      load_board_list()
 
     }
 

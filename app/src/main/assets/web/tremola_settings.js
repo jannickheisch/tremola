@@ -10,12 +10,13 @@ function get_default_settings() {
         'wifi_autoconnect': true,
         'show_shortnames': true,
         'hide_forgotten_conv': true,
-        'hide_forgotten_contacts': true
+        'hide_forgotten_contacts': true,
+        'hide_forgotten_boards': true
   }
 }
 
 function toggle_changed(e) {
-  // console.log("toggle ", e.id);
+  console.log("toggle ", e.id);
   tremola.settings[e.id] = e.checked;
   persist()
   applySetting(e.id, e.checked);
@@ -35,6 +36,8 @@ function applySetting(nm, val) {
     load_chat_list();
   } else if (nm == 'hide_forgotten_contacts') {
     load_contact_list();
+  } else if (nm == 'hide_forgotten_boards') {
+    load_board_list()
   }
 }
 
